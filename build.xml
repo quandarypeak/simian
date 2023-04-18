@@ -1,0 +1,215 @@
+<?xml version="1.0"?>
+
+<project default="test" name="simian" basedir=".">
+    <tstamp/>
+
+    <property name="build.compiler" value="modern"/>
+
+    <property name="src.dir" value="."/>
+    <property name="out.dir" value="./out"/>
+
+    <property name="src.docs.dir" value="${src.dir}/docs"/>
+    <property name="src.main.dir" value="${src.dir}/main"/>
+    <property name="src.test.dir" value="${src.dir}/test"/>
+    <property name="src.conf.dir" value="${src.dir}/conf"/>
+    <property name="src.lib.dir" value="${src.dir}/lib"/>
+
+    <property name="out.java.dir" value="${out.dir}/java"/>
+    <property name="out.docs.dir" value="${out.dir}/docs"/>
+    <property name="out.javadoc.dir" value="${out.docs.dir}/javadoc"/>
+    <property name="out.classes.dir" value="${out.dir}/classes"/>
+    <property name="out.classes.main.dir" value="${out.classes.dir}/main"/>
+    <property name="out.classes.test.dir" value="${out.classes.dir}/test"/>
+    <property name="out.conf.dir" value="${out.dir}/conf"/>
+    <property name="out.dist.dir" value="${out.dir}/dist"/>
+    <property name="out.reports.dir" value="${out.dir}/reports"/>
+    <property name="out.reports.junit.dir" value="${out.reports.dir}/junit"/>
+
+    <property name="lib.build.dir" value="${src.lib.dir}/build"/>
+
+    <property name="main.class" value="com.quandarypeak.simian.SimianMain"/>
+    <property name="gui.class" value="com.quandarypeak.simian.SimianGui"/>
+
+    <fileset id="lib.build.fileset" dir="${lib.build.dir}" includes="*.jar"/>
+
+    <property file="${src.conf.dir}/build.properties"/>
+
+    <property name="build.number" value="${DSTAMP}-${TSTAMP}"/>
+
+    <property name="exe.file" value="${ant.project.name}-${build.number}.exe"/>
+    <property name="jar.file" value="${ant.project.name}-${build.number}.jar"/>
+    <property name="dist.file" value="${ant.project.name}-${build.number}.tar.gz"/>
+    <property name="md5.file" value="${dist.file}.MD5"/>
+
+    <property name="deploy.dir" value="${src.dir}/../../quandarypeak.github.io/simian"/>
+
+    <path id="main.class.path">
+        <fileset refid="lib.build.fileset"/>
+    </path>
+
+    <path id="test.class.path">
+        <pathelement path="${out.classes.test.dir}"/>
+        <pathelement path="${out.classes.main.dir}"/>
+        <path refid="main.class.path"/>
+    </path>
+
+    <target name="init">
+        <tstamp/>
+        <taskdef name="yguard" classname="com.yworks.yguard.YGuardTask" classpathref="main.class.path"/>
+    </target>
+
+    <target name="clean" depends="init">
+        <delete dir="${out.dir}"/>
+    </target>
+
+    <target name="prepare" depends="init">
+        <mkdir dir="${out.dir}"/>
+        <mkdir dir="${out.java.dir}"/>
+        <mkdir dir="${out.docs.dir}"/>
+        <mkdir dir="${out.conf.dir}"/>
+        <mkdir dir="${out.dist.dir}"/>
+        <mkdir dir="${out.classes.dir}"/>
+        <mkdir dir="${out.classes.main.dir}"/>
+        <mkdir dir="${out.classes.test.dir}"/>
+        <mkdir dir="${out.reports.junit.dir}"/>
+
+        <copy todir="${out.java.dir}" overwrite="true" >
+            <filterchain>
+                <expandproperties/>
+            </filterchain>
+            <fileset dir="${src.main.dir}"/>
+        </copy>
+
+        <copy todir="${out.docs.dir}" overwrite="true" >
+            <fileset dir="${src.docs.dir}"/>
+        </copy>
+
+        <copy todir="${out.docs.dir}" overwrite="true" >
+            <filterchain>
+                <expandproperties/>
+            </filterchain>
+            <fileset dir="${src.docs.dir}">
+                <include name="**/*.html"/>
+                <include name="**/*.xsl"/>
+                <include name="**/*.txt"/>
+            </fileset>
+        </copy>
+
+        <copy todir="${out.conf.dir}" overwrite="true" >
+            <filterchain>
+                <expandproperties/>
+            </filterchain>
+            <fileset dir="${src.conf.dir}"/>
+        </copy>
+    </target>
+
+    <target name="compile" depends="prepare">
+        <javac source="17"
+               target="17"
+               srcdir="${out.java.dir}"
+               includes="**/*.java"
+               destdir="${out.classes.main.dir}"
+               debug="false"
+               deprecation="on"
+               classpathref="main.class.path"
+               includeantruntime="false"
+               verbose="yes">
+            <compilerarg value="-Xlint"/>
+        </javac>
+
+        <copy todir="${out.classes.main.dir}">
+            <fileset dir="${src.main.dir}" excludes="**/*.java"/>
+        </copy>
+
+        <javac srcdir="${src.test.dir}" includes="**/*.java" destdir="${out.classes.test.dir}" optimize="false" debug="true" deprecation="on" classpathref="test.class.path" includeantruntime="false"/>
+
+        <copy todir="${out.classes.test.dir}">
+            <fileset dir="${src.test.dir}" excludes="**/*.java"/>
+        </copy>
+    </target>
+
+    <target name="test" depends="compile">
+        <junit fork="true" printSummary="true" failureProperty="test.failure">
+            <classpath refid="test.class.path"/>
+            <formatter type="plain"/>
+            <formatter type="xml"/>
+            <batchtest fork="yes" todir="${out.reports.junit.dir}" haltonfailure="no">
+                <fileset dir="${out.classes.test.dir}" includes="**/*Test.class"/>
+            </batchtest>
+        </junit>
+
+        <echo message="Generating HTML Test Reports"/>
+        <junitreport todir="${out.reports.junit.dir}">
+            <fileset dir="${out.reports.junit.dir}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${out.reports.junit.dir}"/>
+        </junitreport>
+
+        <fail if="test.failure" message="One or more tests failed. See the generated HTML report for details."/>
+    </target>
+
+    <target name="jar" depends="compile">
+        <jar destfile="${out.dist.dir}/${jar.file}" basedir="${out.classes.main.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${main.class}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="obfuscated-jar" depends="jar">
+        <yguard>
+            <inoutpair in="${out.dist.dir}/${jar.file}" out="${out.dist.dir}/${jar.file}"/>
+
+<!--            <externalclasses>-->
+<!--                <path refid="main.class.path"/>-->
+<!--            </externalclasses>-->
+
+            <rename mainclass="${main.class}" logfile="${out.reports.dir}/yguard.xml">
+                <property name="error-checking" value="pedantic"/>
+
+                <keep>
+                    <class classes="protected" methods="protected" fields="protected"/>
+                </keep>
+            </rename>
+        </yguard>
+    </target>
+
+    <target name="javadoc" depends="jar">
+        <javadoc sourcepath="${out.java.dir}"
+                packagenames="com.quandarypeak.simian.*"
+                destdir="${out.javadoc.dir}"
+                classpathref="main.class.path"
+                access="public" author="yes" version="yes" breakiterator="yes" failonerror="yes"
+                overview="${out.conf.dir}/javadoc-overview.html"
+                doctitle="${title}, v ${build.number} API Specification"
+                windowtitle="${title} v${build.number}"
+                header="${title} v${build.number}"
+                bottom="${copyright}" >
+        </javadoc>
+    </target>
+
+    <target name="dist" depends="clean, obfuscated-jar, test, javadoc">
+        <tar destfile="${out.dist.dir}/${dist.file}" compression="gzip">
+            <fileset dir="${out.docs.dir}" includes="**/*"/>
+            <tarfileset dir="${out.dist.dir}" includes="*.jar *.exe" prefix="bin"/>
+        </tar>
+
+        <checksum file="${out.dist.dir}/${dist.file}"/>
+    </target>
+
+    <target name="transfer" depends="init">
+        <copy todir="${deploy.dir}" overwrite="true" >
+            <fileset dir="${out.docs.dir}"/>
+        <!-- </copy>
+
+        <copy todir="${deploy.dir}" overwrite="true" > -->
+          <fileset dir="${out.dist.dir}">
+            <include name="${dist.file}"/>
+            <include name="${md5.file}"/>
+          </fileset>
+        </copy>
+    </target>
+
+    <target name="deploy" depends="dist, test, transfer"/>
+</project>

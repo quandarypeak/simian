@@ -1,0 +1,51 @@
+<body>
+<p>This document is the API specification for Simian, version ${build.number}.</p>
+
+<p>The programmatic interface allows appropriate license holders to use simian from their own applications such
+as third-party tools, plugins, etc.</p>
+
+<p>To get you started, here is an example of how the API might be used. Assume that the command-line contains a
+list of files to load:</p>
+
+<pre>    public void main(String[] args) {
+        AuditListener auditListener = new MyAuditListener()&semi;
+
+        Options options = new Options()&semi;
+        options.setThreshold(6)&semi;
+        options.setOption(Option.IGNORE_STRINGS, true)&semi;
+
+        Checker checker = new Checker(auditListener, options)&semi;
+
+        StreamLoader streamLoader = new StreamLoader(checker)&semi;
+
+        FileLoader fileLoader = new FileLoader(streamLoader)&semi;
+
+        for (int i = 0&semi; i &lt; args.length&semi; ++i) {
+            loader.load(args[i])&semi;
+        }
+
+        if (checker.check()) {
+            System.out.println("Duplicate lines were found!")&semi;
+        }
+    }</pre>
+
+<p>If your files are sourced from other than the file system, say from a socket for example, you can use a
+<code>StreamLoader</code> instead of a <code>FileLoader</code>:</p>
+
+<pre>        StreamLoader streamLoader = new StreamLoader(checker)&semi;
+
+        InputStream streamLoader = socket.getInputStream()&semi;
+
+        try {
+            loader.load("MyFile.java", stream)&semi;
+        } finally {
+            stream.close();
+        }</pre>
+
+<p>Next you will no doubt need to process the output of the <code>Checker</code>. For this, you must implement the
+<code>AuditListener</code> interface. The checker will notify the event auditListener on significant events such as the start/end
+of a check, file processing and of course once for each duplicated block of code.</p>
+
+<p>If for some reason you need to have multiple listeners, or in fact if you don't wish to be notified at all, you can
+use a <code>CompositeAuditListener</code> as a multi-cast dispatcher.</p>
+</body>
