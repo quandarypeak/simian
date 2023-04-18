@@ -1,9 +1,9 @@
 <a name="readme-top"></a>
 
 # Simian
-Simian (Similarity Analyser) identifies duplication in Java, C#, C, C++, SQL, COBOL, Ruby, JSP, ASP, HTML, XML, Visual Basic, Groovy source code and even plain text files. In fact, simian can be used on any human readable files such as ini files, deployment descriptors, you name it.
+Simian (Similarity Analyzer) identifies duplication in Java, C#, C, C++, SQL, COBOL, Ruby, JSP, ASP, HTML, XML, Visual Basic, Groovy source code and even plain text files. In fact, simian can be used on any human readable files such as ini files, deployment descriptors, you name it.
 
-For more information, visit https://simian.quandarypeak.com.
+Visit https://simian.quandarypeak.com for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -23,11 +23,11 @@ For OSS Notice, refer to the [OSS Notice](docs/OSS_Notice.md) document.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contributing
-You are welcome to make contribution to the Simian source code. 
+You are welcome to make contributions to the Simian source code. 
 
 Contact simian@quandarypeak.com for any contribution requests.
 
-Please be mindful of the Simian License, which limits distribution of Simian.
+Please be mindful of the Simian license which limits distribution of Simian.
 
 ### Git Branching
 Follow [Git Flow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow).
@@ -39,6 +39,6 @@ Follow [Git Flow](https://www.atlassian.com/git/tutorials/comparing-workflows/gi
 
 <!-- CONTACT -->
 ## Contact
-The Simian development support -- simian@quandarypeak.com
+Simian development support: simian@quandarypeak.com
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
