@@ -7,6 +7,13 @@ For more information, visit https://simian.quandarypeak.com.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Build
+In order to build Simian, run [Apache Ant](https://ant.apache.org/).
+
+For example, run `ant jar` to create a JAR package.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 <!-- LICENSE -->
 ## License
 Simian has its own licensing model described in the [LICENSE.txt](LICENSE.txt) file.
