@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 # Simian
-Simian (Similarity Analyzer) identifies duplication in Java, C#, C, C++, SQL, COBOL, Ruby, JSP, ASP, HTML, XML, Visual Basic, Groovy source code and even plain text files. In fact, simian can be used on any human readable files such as ini files, deployment descriptors, you name it.
+Simian Similarity Analyzer identifies duplication in Java, C#, C, C++, SQL, COBOL, Ruby, JSP, ASP, HTML, XML, Visual Basic, Groovy source code and even plain text files. In fact, simian can be used on any human readable files such as ini files, deployment descriptors, you name it.
 
 Visit https://simian.quandarypeak.com for more information.
 
