@@ -1,0 +1,45 @@
+Simian Similarity Analyzer
+
+
+Commercial Software License 2024 Quandary Peak Research (“Company”)
+
+1. License Grant: Company hereby grants to you free-of-charge a nonexclusive
+license to use this software and associated documentation files (the
+“Software”), subject to the terms of this Commercial Software License. All
+rights are reserved by Company under the Company’s copyright ownership interest
+in the Software.
+
+2. Restrictions: You are prohibited from transferring or distributing the
+Software to any person or entity. You are also prohibited from modifying the
+Software and making any derivative works of the Software.
+
+3. Publicity Requirement: As a condition of this license, you agree to indicate
+your use of the Software in all public announcements or documents that relate to
+your use of the Software. Such disclosures should clearly mention the Software
+provided by Company.
+
+4. License Termination: Failure by you to adhere to the requirements in
+Paragraphs 1, 2, and 3 will result in immediate termination of the license
+granted to you pursuant to this Commercial Software License, effective as of the
+date you first used the Software.
+
+5. Changes to License Terms: Company reserves the right to modify the terms and
+conditions of this License at any time. Such modifications shall be effective
+immediately upon notification to you. Your continued use of the Software
+following any such modifications constitutes your acceptance of these new terms.
+
+6. Limitation of Liability and Warranty Disclaimer: IN NO EVENT SHALL COMPANY BE
+LIABLE TO ANY ENTITY OR PERSON FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR
+CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF COMPANY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+COMPANY SPECIFICALLY DISCLAIMS ANY AND ALL WARRANTIES, EXPRESS AND IMPLIED,
+INCLUDING, BUT NOT LIMITED TO, ANY IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE IS PROVIDED “AS IS.” COMPANY HAS
+NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
+MODIFICATIONS OF THIS SOFTWARE.
+
+
+Copyright © 2023–2024 Quandary Peak Research, Inc. All rights in the Software,
+including all intellectual property rights, are owned exclusively by Quandary
+Peak Research, Inc. The company acknowledges Simon Harris for his original
+authorship and significant contribution to the development of the Software.
