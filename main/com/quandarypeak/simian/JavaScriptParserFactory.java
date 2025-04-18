@@ -19,19 +19,24 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-final class JavaScriptParserFactory extends AbstractCFamilyParserFactory {
+public final class JavaScriptParserFactory extends AbstractCFamilyParserFactory {
     /**
      * These modifiers may be optionally ignored
      */
-    private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList("abstract", "class", "const", "enum", "export", "extends", "final", "function", "implements", "interface", "native", "private", "protected", "static", "throws", "transient", "volatile", "var"));
+    private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
+        "abstract", "class", "const", "enum", "export", "extends", "final",
+        "function", "implements", "interface", "native", "private", "protected",
+        "public", "static", "throws", "transient", "volatile", "var", "let"));
 
     /**
      * Any of these will cause the line on which it appears to be ignored
      */
-    private static final Set<String> IGNORE_LINE_TRIGGERS = new HashSet<>(Arrays.asList("import", "package"));
+    private static final Set<String> IGNORE_LINE_TRIGGERS = new HashSet<>(
+        Arrays.asList("import", "package"));
 
     @Override
     public Parser createParser(final LineListener listener, final Options options) {
-        return new CFamilyParser(createBaseLanguageTokenVisitor(listener, options, MODIFIERS, IGNORE_LINE_TRIGGERS));
+        return new CFamilyParser(createBaseLanguageTokenVisitor(
+            listener, options, MODIFIERS, IGNORE_LINE_TRIGGERS));
     }
 }

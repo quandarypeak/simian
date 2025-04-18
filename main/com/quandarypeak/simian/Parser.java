@@ -18,7 +18,7 @@ package com.quandarypeak.simian;
 import java.io.IOException;
 import java.io.Reader;
 
-interface Parser {
+public interface Parser {
     /**
      * Parses a stream.
      *

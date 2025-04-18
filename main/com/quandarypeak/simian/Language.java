@@ -44,6 +44,11 @@ public final class Language implements Comparable<Language> {
     public static final Language JAVA_SCRIPT = new Language("JavaScript", new JavaScriptParserFactory(), "javascript", "js");
 
     /**
+     * The TypeScript language.
+     */
+    public static final Language TYPESCRIPT = new Language("TypeScript", new TypeScriptParserFactory(), "typescript", "ts");
+
+    /**
      * The C# language.
      */
     public static final Language C_SHARP = new Language("C#", new CSharpParserFactory(), "c#", "cs", "csharp");
