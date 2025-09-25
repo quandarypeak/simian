@@ -109,7 +109,7 @@ public final class Language implements Comparable<Language> {
     public static final Language TEXT = new Language("Text", new DefaultParserFactory(), "txt", "text");
 
     /**
-     * The Swift language.
+     * The Swift language.                                                                      
      */
     public static final Language SWIFT = new Language("Swift", new DefaultParserFactory(), "swift");
 
