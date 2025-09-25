@@ -2,6 +2,11 @@ plugins {
     java
 }
 
+// Repositories
+repositories {
+    mavenCentral()
+}
+
 // Project properties from conf/build.properties
 val buildNumber = "4.0.0"
 val title = "Simian Similarity Analyzer"
@@ -46,20 +51,19 @@ sourceSets {
     }
 }
 
-// Dependencies from lib/build directory
+// Dependencies - using Maven Central where possible
 dependencies {
-    // Build-time dependencies
-    implementation(files("lib/build/asm-9.2.jar"))
-    implementation(files("lib/build/checkstyle-5.6-all.jar"))
-    implementation(files("lib/build/ObfuscationAnnotation-3.1.0.jar"))
-    implementation(files("lib/build/yguard-3.1.0.jar"))
+    // Build-time dependencies from Maven Central
+    implementation("org.ow2.asm:asm:9.2")
+    implementation("com.puppycrawl.tools:checkstyle:5.6")
+    implementation("com.yworks:yguard:4.1.1")
     
-    // Test dependencies
-    testImplementation(files("lib/build/junit-4.11.jar"))
-    testImplementation(files("lib/build/hamcrest-core-1.3.jar"))
+    // Test dependencies from Maven Central
+    testImplementation("junit:junit:4.11")
+    testImplementation("org.hamcrest:hamcrest-core:1.3")
     
-    // Runtime dependencies
-    runtimeOnly(files("lib/build/ant.jar"))
+    // Dependencies that must remain as local JARs (not available in Maven Central)
+    //implementation(files("lib/build/ObfuscationAnnotation-3.1.0.jar"))
 }
 
 // Compilation configuration
@@ -92,14 +96,14 @@ tasks.test {
 // JAR task
 tasks.jar {
     archiveBaseName.set(projectName)
-    archiveVersion.set(buildVersion)
+    archiveVersion.set(buildNumber)  // Use build number without timestamp
     archiveClassifier.set("")
     
     manifest {
         attributes(
             "Main-Class" to mainClass,
             "Implementation-Title" to title,
-            "Implementation-Version" to buildVersion,
+            "Implementation-Version" to buildNumber,  // Use build number without timestamp
             "Implementation-Vendor" to "Quandary Peak Research"
         )
     }
@@ -199,7 +203,7 @@ tasks.register("obfuscated-jar") {
         copy {
             from("build/libs/$projectName-$buildVersion.jar")
             into("out/dist")
-            rename { "obfuscated-$it" }
+            rename { "$it" }
         }
     }
 }
