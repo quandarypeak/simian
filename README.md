@@ -12,6 +12,8 @@ In order to build Simian, run [Gradle](https://gradle.org/).
 
 For example, run `gradlew jar` to create a JAR package.
 
+There are other tasks: dist, build, and deploy.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- LICENSE -->
