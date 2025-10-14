@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     java
 }
@@ -17,7 +19,7 @@ val webTitle = "$title | Similar Code Detector"
 // Build properties
 val timestamp = System.currentTimeMillis().toString()
 val projectName = "simian"
-val buildVersion = "$buildNumber-$timestamp"
+val buildVersion = "$buildNumber"
 
 // Main classes
 val mainClass = "com.quandarypeak.simian.SimianMain"
@@ -273,14 +275,15 @@ tasks.register("dist") {
         
         println("TAR.GZ distribution created: $tarFile")
         
-        // Create MD5 checksum using a simple hash approach
+        // Create MD5 checksum based on actual file content
         val md5File = file("build/dist/$projectName-$distVersion.tar.gz.MD5")
         val fileBytes = tarFile.readBytes()
         val fileSize = fileBytes.size
         val fileName = tarFile.name
-        // Create a simple hash based on file content and name
-        val simpleHash = (fileSize * fileName.hashCode()).toString(16).take(32).padStart(32, '0')
-        md5File.writeText("$simpleHash  $fileSize  $fileName")
+        // Compute MD5 hash from file bytes
+        val md5Digest = MessageDigest.getInstance("MD5")
+        val md5Hash = md5Digest.digest(fileBytes).joinToString("") { byte -> "%02x".format(byte) }
+        md5File.writeText("$md5Hash  $fileName")
         println("MD5 checksum created: $md5File")
     }
 }
@@ -291,19 +294,64 @@ tasks.register("transfer") {
     description = "Transfer files to deploy directory"
     
     doLast {
+        // Define source and destination paths
+        val docsSource = file("build/docs")
+        val distSource = file("build/dist")
+        val destination = file("../../quandarypeak.github.io/simian")
+        val tarGzFile = file("build/dist/$projectName-$buildVersion.tar.gz")
+        val md5File = file("build/dist/$projectName-$buildVersion.tar.gz.MD5")
+        
+        // Check if source directories exist
+        if (!docsSource.exists()) {
+            throw GradleException("Documentation source directory does not exist: ${docsSource.absolutePath}")
+        }
+        if (!docsSource.isDirectory) {
+            throw GradleException("Documentation source is not a directory: ${docsSource.absolutePath}")
+        }
+        
+        if (!distSource.exists()) {
+            throw GradleException("Distribution source directory does not exist: ${distSource.absolutePath}")
+        }
+        if (!distSource.isDirectory) {
+            throw GradleException("Distribution source is not a directory: ${distSource.absolutePath}")
+        }
+        
+        // Check if required distribution files exist
+        if (!tarGzFile.exists()) {
+            throw GradleException("Distribution tar.gz file does not exist: ${tarGzFile.absolutePath}")
+        }
+        if (!md5File.exists()) {
+            throw GradleException("MD5 checksum file does not exist: ${md5File.absolutePath}")
+        }
+        
+        // Check if destination directory exists, create if necessary
+        if (!destination.exists()) {
+            println("Destination directory does not exist. Creating: ${destination.absolutePath}")
+            if (!destination.mkdirs()) {
+                throw GradleException("Failed to create destination directory: ${destination.absolutePath}")
+            }
+        }
+        if (!destination.isDirectory) {
+            throw GradleException("Destination is not a directory: ${destination.absolutePath}")
+        }
+        
+        println("Transferring files to: ${destination.absolutePath}")
+        
         // Copy documentation files
         copy {
-            from("build/docs")
-            into("../../quandarypeak.github.io/simian")
+            from(docsSource)
+            into(destination)
         }
+        println("Documentation files transferred successfully")
         
         // Copy distribution files
         copy {
-            from("build/dist") {
+            from(distSource) {
                 include("$projectName-$buildVersion.tar.gz", "$projectName-$buildVersion.tar.gz.MD5")
             }
-            into("../../quandarypeak.github.io/simian")
+            into(destination)
         }
+        println("Distribution files transferred successfully")
     }
 }
 
