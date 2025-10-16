@@ -4,6 +4,8 @@
 .tags
 .tags_sorted_by_file
 CVS
+.bin
+.build
 *.rbc
 *.tmproj
 .idea/workspace.xml

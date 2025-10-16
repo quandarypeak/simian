@@ -8,9 +8,11 @@ Visit https://simian.quandarypeak.com for more information.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Build
-In order to build Simian, run [Apache Ant](https://ant.apache.org/).
+In order to build Simian, run [Gradle](https://gradle.org/).
 
-For example, run `ant jar` to create a JAR package.
+For example, run `gradlew jar` to create a JAR package.
+
+There are other tasks: dist, build, and deploy.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
