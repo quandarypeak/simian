@@ -2,19 +2,21 @@ import java.security.MessageDigest
 
 plugins {
     java
+    `maven-publish`
 }
 
 // Repositories
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
-// Project properties from conf/build.properties
-val buildNumber = "4.0.0"
-val title = "Simian Similarity Analyzer"
-val copyright = "Copyright (c) 2025 Quandary Peak Research. All rights reserved."
-val license = "Subject to the Quandary Peak Academic Software License."
-val webTitle = "$title | Similar Code Detector"
+// Project properties from gradle.properties
+val buildNumber: String by project
+val title: String by project
+val copyright: String by project
+val license: String by project
+val webTitle: String by project
 
 // Build properties
 val timestamp = System.currentTimeMillis().toString()
@@ -58,14 +60,10 @@ dependencies {
     // Build-time dependencies from Maven Central
     implementation("org.ow2.asm:asm:9.2")
     implementation("com.puppycrawl.tools:checkstyle:5.6")
-    implementation("com.yworks:yguard:4.1.1")
     
     // Test dependencies from Maven Central
     testImplementation("junit:junit:4.11")
     testImplementation("org.hamcrest:hamcrest-core:1.3")
-    
-    // Dependencies that must remain as local JARs (not available in Maven Central)
-    //implementation(files("lib/build/ObfuscationAnnotation-3.1.0.jar"))
 }
 
 // Compilation configuration
@@ -108,6 +106,48 @@ tasks.jar {
             "Implementation-Version" to buildNumber,  // Use build number without timestamp
             "Implementation-Vendor" to "Quandary Peak Research"
         )
+    }
+}
+
+// Publishing configuration
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "com.quandarypeak"
+            artifactId = projectName
+            version = buildNumber
+            
+            from(components["java"])
+            
+            pom {
+                name.set(title)
+                description.set("Simian Similarity Analyzer - Similar Code Detector")
+                url.set("https://simian.quandarypeak.com/")
+                
+                licenses {
+                    license {
+                        name.set("Quandary Peak Academic Software License")
+                        url.set("https://github.com/quandarypeak/simian/blob/main/LICENSE-ACADEMIC.txt")
+                    }
+                    license {
+                        name.set("Quandary Peak Commercial Software License")
+                        url.set("https://github.com/quandarypeak/simian/blob/main/LICENSE-COMMERCIAL.txt")
+                    }
+                }
+                
+                developers {
+                    developer {
+                        name.set("Quandary Peak Research")
+                        organization.set("Quandary Peak Research")
+                        organizationUrl.set("https://www.quandarypeak.com")
+                    }
+                }
+            }
+        }
+    }
+    
+    repositories {
+        mavenLocal()
     }
 }
 
