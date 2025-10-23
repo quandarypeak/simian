@@ -30,7 +30,7 @@ import java.util.Objects;
 /**
  * Command line interface.
  */
-public final class SimianMain {
+public class SimianMain {
     private static final Option FORMATTER = new Option("formatter", Option.PARAMETER_SEP + "TYPE[:FNAME]", "Uses the specified output format when reporting");
 
     private static final Option INCLUDES = new Option("includes", Option.PARAMETER_SEP + "SPEC", "Including files matching the specified pattern");
@@ -50,7 +50,7 @@ public final class SimianMain {
     /**
      * Constructor marked private to prevent instantiation.
      */
-    private SimianMain(final String[] args) {
+    public SimianMain(final String[] args) {
         this.args = Objects.requireNonNull(args);
         options.setOption(Option.FAIL_ON_DUPLICATION, true);
     }
@@ -64,7 +64,7 @@ public final class SimianMain {
         new SimianMain(args).run();
     }
 
-    private void run() {
+    public void run() {
         LOG.println(Version.BANNER);
 
         for (final String arg : args) {
