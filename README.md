@@ -8,6 +8,9 @@ Visit https://simian.quandarypeak.com for more information.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Build
+Simian can be built with a recent version of Java (tested with JDK 21). However, the produced jar
+can be used with any JDK 8 or newer.
+
 In order to build Simian, run [Gradle](https://gradle.org/).
 
 For example, run `gradlew jar` to create a JAR package.
