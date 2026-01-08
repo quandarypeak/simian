@@ -1,6 +1,19 @@
 Simian Changelog
 See the improvements we've made with each version release of Simian Similarity Analyzer.
 
+Version 4.1.2
+
+Refactor SimianMain to make it extendable
+
+Version 4.1.1
+
+Fix license file in build.gradle.ks
+
+
+Version 4.1.0
+
+Replace Ant with Gradle
+
 Version 4.0.0
 
 First release by Quandary Peak Research, Inc.
