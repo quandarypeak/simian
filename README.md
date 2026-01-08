@@ -48,6 +48,8 @@ The default VM size seems to be adequate for most projects. If you encounter the
 
 Exception in thread "main" java.lang.OutOfMemoryError
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Gradle Task
 This method allows you to integrate Simian with Gradle Build Tool, an open source build system for Java, Android, and Kotlin development environments.
 
@@ -131,6 +133,8 @@ To produce XML output:
     )
 ```
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ### Simian Processing Options
 | Option                | Languages                                              | Default | Possible values                                                                                                           | Description                                                                                                                                       |
 |-----------------------|--------------------------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -158,6 +162,30 @@ To produce XML output:
 | balanceCurlyBraces    | Ruby                                                  | false   | boolean                                                                                                                   | Ensures that expressions inside curly braces split across multiple physical lines are considered as one.                                           |
 | balanceSquareBrackets | Java, C#, C, C++, JavaScript, Ruby, Groovy            | false   | boolean                                                                                                                   | Ensures that expressions inside square brackets split across multiple physical lines are considered as one; defaults to false.                      |
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Simian recognizes the following file extensions:
+| Language               | Extensions                                   |
+|------------------------|----------------------------------------------|
+| Java                   | java                                         |
+| C Sharp                | cs, c#, csharp                               |
+| C                      | c, h, m                                      |
+| C++                    | cpp, hpp, cplusplus, inl                     |
+| Ruby                   | rb, ruby                                     |
+| COBOL                  | cobol                                        |
+| ABAP                   | abap                                         |
+| XML                    | xml, xsl, xsd                                |
+| Jakarta Server Pages   | jsp                                          |
+| ASP                    | asp                                          |
+| JavaScript             | js, javascript                               |
+| HTML                   | html, htm                                    |
+| Visual Basic           | vb, bas, cls, frm                            |
+| Lisp                   | lisp, lsp                                    |
+| Groovy                 | groovy                                       |
+| Plain Text             | default when language cannot be determined   |
+
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- LICENSE -->
 ## License
