@@ -16,6 +16,144 @@ There are other tasks: dist, build, and deploy.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Command Line Interface
+Simian's command line interface allows you to run it from a shell, shell script, or batch file, scanning a directory for all files matching a pattern.
+
+The general form for the Java version is: java -jar simian.jar [options] [files]
+
+The files can be specified as any regular shell glob or simply a list of files and can be mixed with the -includes option. (See below for examples.)
+
+For example, to find all java files in all sub-directories of the current directory: "**/*.java"
+
+To find all java files in the current directory and set the threshold to 3: -threshold=3 "*.java"
+
+To find all C# files in the current directory: "*.cs"
+
+To find all C and header in all sub-directories of the current directory: **/*.c **/*.h
+
+To find all java files in two different directories: "/dir1/*.java" "/dir2/*.java"
+
+To find all java files in all sub-directories, excluding Test classes: -includes=**/*.java -excludes=**/*Test.java
+
+To find all java files in the current directory and ignore numbers: -ignoreNumbers "*.java"
+
+To find all Ruby files and display the results in xml format: -formatter=xml "*.rb"
+
+To find all Ruby files and sends the results in emacs compatible format to a file: -formatter=emacs:c:\temp\simian.log "*.rb"
+
+To read configuration from a file (where each line of the file specifies at most one of any of the valid command-line arguments): -config=simian.config
+
+Notes
+The default VM size seems to be adequate for most projects. If you encounter the following error you will need to increase the VM heap size using the -mx JVM option.
+
+Exception in thread "main" java.lang.OutOfMemoryError
+
+## Gradle Task
+This method allows you to integrate Simian with Gradle Build Tool, an open source build system for Java, Android, and Kotlin development environments.
+
+The following examples show neccessary steps to use Simian for checking code duplication in a Java project.
+Note: Adjust the path of Simian jar to suit your environment. It is recommended to host the jar in a Maven repo instead of a local folder shown here.
+
+Add Simian to the list of dependencies in your build.gradle.kts file (or similar like pom.xml):
+
+```
+dependencies {
+    ...
+    implementation("simian:simian:4.0.0")
+    ...
+}
+```
+
+Define a simianCheck task to run the checker. For all defaults:
+```
+tasks.register<JavaExec>("simianCheck") {
+
+    val inclFiles = sourceSets["main"].java.srcDirs.map { "-includes=${it.path}/**/*.java" }
+
+    mainClass.set("-jar")
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         *inclFiles.toTypedArray(),
+    )
+}
+```
+
+To exclude test classes if they exists in the same tree as the source:
+```
+    val exclFiles = sourceSets["main"].java.srcDirs.map { "-excludes=${it.path}/**/*Test.java" }
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         *inclFiles.toTypedArray(),
+         *exclFiles.toTypedArray(),
+    )
+```
+
+To change the minimum number of lines that is considered a match:
+```
+    ...
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         *inclFiles.toTypedArray(),
+         "-threshold=6",
+    )
+```
+
+To force the language used for processing:
+```
+    ...
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         "-includes=path/to/sources/**/*.*",
+         "-language=java",
+    )
+```
+
+To have the build fail one or more matches are found:
+```
+    ...
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         "-includes=path/to/sources/**/*.*",
+         "-failureProperty=test.failure",
+    )
+```
+
+By default, Simian produces output in plain text. You can override this by using the nested formatter element. The formatter takes a type (either "plain"; "xml"; "emacs"; "vs"; or "yaml") and an optional filename (toFile). For example, to send output to a file:
+```
+    ...
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         "-includes=path/to/sources/**/*.*",
+         "-formatter=plain:simian-log.txt",
+    )
+```
+
+To produce XML output:
+```
+    ...
+    args(layout.projectDirectory.file("libs/simian-4.0.0.jar").asFile.absolutePath,
+         "-includes=path/to/sources/**/*.*",
+         "-formatter=xml:simian-log.xml",
+    )
+```
+
+### Simian Processing Options
+| Option                | Languages                                              | Default | Possible values                                                                                                           | Description                                                                                                                                       |
+|-----------------------|--------------------------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| formatter             | all                                                    | none    | plain, xml, emacs, vs (visual studio), yaml, null                                                                         | Specifies the format in which processing results will be produced.                                                                                 |
+| threshold             | all                                                    | 6       | integer >= 2                                                                                                              | Matches will contain at least the specified number of lines.                                                                                       |
+| language              | n/a                                                    | none    | java, c#, cs, csharp, c, c++, cpp, cplusplus, js, javascript, cobol, abap, rb, ruby, vb, jsp, html, xml, groovy, asm390   | Assumes all files are in the specified language.                                                                                                   |
+| defaultLanguage       | n/a                                                    | none    | java, c#, cs, csharp, c, c++, cpp, cplusplus, js, javascript, cobol, abap, rb, ruby, vb, jsp, html, xml, groovy, asm390   | Assumes files are in the specified language if none can be inferred.                                                                              |
+| failOnDuplication     | all                                                    | true    | boolean                                                                                                                   | Causes the checker to fail the current process if duplication is detected.                                                                         |
+| reportDuplicateText   | all                                                    | false   | boolean                                                                                                                   | Prints the duplicate text in reports.                                                                                                              |
+| ignoreBlocks          | all                                                    | none    | string                                                                                                                    | Ignores all lines between specified START/END markers.                                                                                             |
+| ignoreCurlyBraces     | Java, C#, C, C++, JavaScript, Ruby, Groovy             | false   | boolean                                                                                                                   | Curly braces are ignored.                                                                                                                          |
+| ignoreIdentifiers     | Java, C#, C, C++, JavaScript, COBOL, Ruby, Groovy      | false   | boolean                                                                                                                   | Completely ignores all identifiers.                                                                                                                |
+| ignoreIdentifierCase  | Java, C#, C, C++, JavaScript, COBOL, Ruby, Groovy      | true    | boolean                                                                                                                   | Matches identifiers irrespective of case, e.g. `MyVariableName` and `myvariablename` would both match.                                             |
+| ignoreRegions         | C#                                                     | false   | boolean                                                                                                                   | Ignore lines between `#region`/`#endregion`.                                                                                                       |
+| ignoreStrings         | Java, C#, C, C++, JavaScript, COBOL, Ruby, SQL, Groovy | false   | boolean                                                                                                                   | `MyVariable` and `myvariable` would both match.                                                                                                    |
+| ignoreStringCase      | Java, C#, C, C++, JavaScript, COBOL, Ruby, SQL, Groovy | true    | boolean                                                                                                                   | `"Hello, World"` and `"HELLO, WORLD"` would both match.                                                                                            |
+| ignoreNumbers         | Java, C#, C, C++, JavaScript, COBOL, Ruby, SQL, Groovy | false   | boolean                                                                                                                   | `int x = 1;` and `int x = 576;` would both match.                                                                                                  |
+| ignoreCharacters      | Java, C#, C, C++, JavaScript, COBOL, Ruby, Groovy      | false   | boolean                                                                                                                   | `'A'` and `'Z'` would both match.                                                                                                                  |
+| ignoreCharacterCase   | Java, C#, C, C++, JavaScript, COBOL, Ruby, Groovy      | true    | boolean                                                                                                                   | `'A'` and `'a'` would both match.                                                                                                                  |
+| ignoreLiterals        | Java, C#, C, C++, JavaScript, COBOL, Ruby, SQL, Groovy | false   | boolean                                                                                                                   | `'A'`, `"one"` and `27.8` would all match.                                                                                                         |
+| ignoreSubtypeNames    | Java, C, Groovy                                       | false   | boo
+
+
 <!-- LICENSE -->
 ## License
 Simian has its own licensing model described in the [LICENSE.txt](LICENSE.txt) file.
