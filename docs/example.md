@@ -21,10 +21,10 @@ The file extension included in the compare is "\*.ext", for example, we can use 
 
 Also, the following parameters are used.
 
-'''
+```
 
 -ignoreSubtypeNames 
-
+ 
 -ignoreCurlyBraces 
 
 -ignoreLiterals 
@@ -35,10 +35,18 @@ Also, the following parameters are used.
 
 -threshold=5
 
-'''
+
+```
+
+Please note that most of the option are language dependant, meaning some of the option may not change the result in certain language.
+
+For eaxmple, * -ignoreSubtypeNames * only work in Java, C, Groovy, and only works with the Subtype of those language.
+
+Simian team is working to expend the language coverage of the process options.
+
 
 After the execution, the result is stored in “simian_test_result.txt”
 
-The complete execution parameters and their meaning can be found on our website. (https://simian.quandarypeak.com/docs/)
+Please refer to the main document for the complete execution parameters and their meaning. (<a href="../README.md">Return to main document</a>)
 
 
