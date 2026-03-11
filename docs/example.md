@@ -40,7 +40,7 @@ Also, the following parameters are used.
 
 Please note that most of the option are language dependant, meaning some of the option may not change the result in certain language.
 
-For eaxmple, * -ignoreSubtypeNames * only work in Java, C, Groovy, and only works with the Subtype of those language.
+For eaxmple, *-ignoreSubtypeNames* only work in Java, C, Groovy, and only works with the Subtype of those language.
 
 Simian team is working to expend the language coverage of the process options.
 
