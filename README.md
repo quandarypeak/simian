@@ -192,18 +192,13 @@ To produce XML output:
 
 <!-- LICENSE -->
 ## License
-Simian has its own licensing model described in the [LICENSE.txt](LICENSE.txt) file.
-
-For OSS Notice, refer to the [OSS Notice](docs/OSS_Notice.md) document.
+This software is licensed under the [Apache Software License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contributing
-You are welcome to make contributions to the Simian source code. 
+Contributions to the Simian source code are welcome. Submit a PR or contact simian@quandarypeak.com to get started.
 
-Contact simian@quandarypeak.com for any contribution requests.
-
-Please be mindful of the Simian license which limits distribution of Simian.
 
 ### Git Branching
 Follow [Git Flow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow).
