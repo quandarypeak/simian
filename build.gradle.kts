@@ -77,6 +77,30 @@ licenseReport {
     excludeGroups = arrayOf("com.quandarypeak")
 }
 
+// Task to copy NOTICES file to root with corrected header
+tasks.register("refreshNotices") {
+    group = "documentation"
+    description = "Copy NOTICES file to root with corrected header"
+    dependsOn("generateLicenseReport")
+    
+    doLast {
+        val sourceFile = file("build/reports/dependency-license/NOTICES")
+        val destFile = file("NOTICES")
+        
+        if (sourceFile.exists()) {
+            val content = sourceFile.readText()
+            val updatedContent = content.replace(
+                "Dependency License Report for simian",
+                "Dependency License Report for $title"
+            )
+            destFile.writeText(updatedContent)
+            println("NOTICES file updated at: ${destFile.absolutePath}")
+        } else {
+            throw GradleException("Source NOTICES file not found: ${sourceFile.absolutePath}")
+        }
+    }
+}
+
 // Compilation configuration
 tasks.compileJava {
     options.compilerArgs.addAll(listOf("-Xlint"))
