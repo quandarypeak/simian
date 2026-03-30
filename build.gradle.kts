@@ -1,8 +1,11 @@
 import java.security.MessageDigest
+import com.github.jk1.license.render.TextReportRenderer
+import com.github.jk1.license.filter.LicenseBundleNormalizer
 
 plugins {
     java
     `maven-publish`
+    id("com.github.jk1.dependency-license-report") version "2.9"
 }
 
 // Repositories
@@ -66,6 +69,38 @@ dependencies {
     testImplementation("org.hamcrest:hamcrest-core:1.3")
 }
 
+// License report configuration
+licenseReport {
+    outputDir = "$projectDir/build/reports/dependency-license"
+    renderers = arrayOf(TextReportRenderer("NOTICES"))
+    filters = arrayOf(LicenseBundleNormalizer())
+    excludeGroups = arrayOf("com.quandarypeak")
+}
+
+// Task to copy NOTICES file to root with corrected header
+tasks.register("refreshNotices") {
+    group = "documentation"
+    description = "Copy NOTICES file to root with corrected header"
+    dependsOn("generateLicenseReport")
+    
+    doLast {
+        val sourceFile = file("build/reports/dependency-license/NOTICES")
+        val destFile = file("NOTICES")
+        
+        if (sourceFile.exists()) {
+            val content = sourceFile.readText()
+            val updatedContent = content.replace(
+                "Dependency License Report for simian",
+                "Dependency License Report for $title"
+            )
+            destFile.writeText(updatedContent)
+            println("NOTICES file updated at: ${destFile.absolutePath}")
+        } else {
+            throw GradleException("Source NOTICES file not found: ${sourceFile.absolutePath}")
+        }
+    }
+}
+
 // Compilation configuration
 tasks.compileJava {
     options.compilerArgs.addAll(listOf("-Xlint"))
@@ -126,12 +161,9 @@ publishing {
                 
                 licenses {
                     license {
-                        name.set("Quandary Peak Academic Software License")
-                        url.set("https://github.com/quandarypeak/simian/blob/main/LICENSE-ACADEMIC.txt")
-                    }
-                    license {
-                        name.set("Quandary Peak Commercial Software License")
-                        url.set("https://github.com/quandarypeak/simian/blob/main/LICENSE-COMMERCIAL.txt")
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                        distribution.set("repo")
                     }
                 }
                 
