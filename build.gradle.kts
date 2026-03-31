@@ -19,7 +19,6 @@ val buildNumber: String by project
 val title: String by project
 val copyright: String by project
 val license: String by project
-val webTitle: String by project
 
 // Build properties
 val timestamp = System.currentTimeMillis().toString()
@@ -39,11 +38,10 @@ java {
 sourceSets {
     main {
         java {
-            srcDirs("main")
-            exclude("**/SimianTask.java")  // Exclude Ant-specific task
+            srcDirs("build/java")
         }
         resources {
-            srcDirs("main")
+            srcDirs("build/java")
             exclude("**/*.java")
         }
     }
@@ -103,9 +101,14 @@ tasks.register("refreshNotices") {
 
 // Compilation configuration
 tasks.compileJava {
+    dependsOn("prepare")
     options.compilerArgs.addAll(listOf("-Xlint"))
     options.isDeprecation = true
     options.isVerbose = true
+}
+
+tasks.processResources {
+    dependsOn("prepare")
 }
 
 tasks.compileTestJava {
@@ -193,7 +196,7 @@ tasks.javadoc {
         addStringOption("encoding", "UTF-8")
         addStringOption("charset", "UTF-8")
         addStringOption("docencoding", "UTF-8")
-        addStringOption("windowtitle", webTitle)
+        addStringOption("windowtitle", "$title $buildNumber")
         addStringOption("doctitle", title)
         addStringOption("header", title)
         addStringOption("footer", copyright)
@@ -241,7 +244,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
         
@@ -262,7 +265,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
         
@@ -275,7 +278,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
     }
