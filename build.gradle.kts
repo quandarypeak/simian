@@ -39,11 +39,11 @@ java {
 sourceSets {
     main {
         java {
-            srcDirs("main")
+            srcDirs("build/java")
             exclude("**/SimianTask.java")  // Exclude Ant-specific task
         }
         resources {
-            srcDirs("main")
+            srcDirs("build/java")
             exclude("**/*.java")
         }
     }
@@ -103,9 +103,14 @@ tasks.register("refreshNotices") {
 
 // Compilation configuration
 tasks.compileJava {
+    dependsOn("prepare")
     options.compilerArgs.addAll(listOf("-Xlint"))
     options.isDeprecation = true
     options.isVerbose = true
+}
+
+tasks.processResources {
+    dependsOn("prepare")
 }
 
 tasks.compileTestJava {
@@ -193,7 +198,7 @@ tasks.javadoc {
         addStringOption("encoding", "UTF-8")
         addStringOption("charset", "UTF-8")
         addStringOption("docencoding", "UTF-8")
-        addStringOption("windowtitle", webTitle)
+        addStringOption("windowtitle", "$title $buildNumber")
         addStringOption("doctitle", title)
         addStringOption("header", title)
         addStringOption("footer", copyright)
