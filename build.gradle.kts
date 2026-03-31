@@ -19,7 +19,6 @@ val buildNumber: String by project
 val title: String by project
 val copyright: String by project
 val license: String by project
-val webTitle: String by project
 
 // Build properties
 val timestamp = System.currentTimeMillis().toString()
@@ -40,7 +39,6 @@ sourceSets {
     main {
         java {
             srcDirs("build/java")
-            exclude("**/SimianTask.java")  // Exclude Ant-specific task
         }
         resources {
             srcDirs("build/java")
@@ -246,7 +244,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
         
@@ -267,7 +265,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
         
@@ -280,7 +278,7 @@ tasks.register("prepare") {
                     .replace("\${title}", title)
                     .replace("\${copyright}", copyright)
                     .replace("\${license}", license)
-                    .replace("\${web.title}", webTitle)
+                    .replace("\${web.title}", "$title $buildNumber")
             }
         }
     }
