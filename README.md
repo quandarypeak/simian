@@ -1,5 +1,3 @@
-<a name="readme-top"></a>
-
 # Simian Similarity Analyzer
 
 Simian detects duplicate code across large codebases in seconds. It is a fast, language-agnostic similarity analyzer that scans source files and reports duplicated blocks of code.
