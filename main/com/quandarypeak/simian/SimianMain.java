@@ -82,13 +82,8 @@ public class SimianMain {
         }
 
         //print the whole commandline
-        String argMessage="";
-        for (final String arg : args) {
-            argMessage += arg;
-            argMessage += " ";
-        }
         LOG.println("Input arguments:");
-        LOG.println(argMessage);
+        LOG.println(String.join(" ",args));
 
         final Checker checker = new Checker(formatters.size() == 1 ? formatters.get(0) : new CompositeAuditListener(formatters), options);
 
