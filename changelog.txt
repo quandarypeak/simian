@@ -1,0 +1,382 @@
+Simian Changelog
+See the improvements we've made with each version release of Simian Similarity Analyzer.
+
+Version 4.2.1 - April 1st, 2026
+* Clean-up README
+* Clean-up build.gradle.kts
+
+Version 4.2.0 - Mar 31st 2026
+* Switch to Apache 2.0 license
+* Update Apache 2.0 license headers to all java files
+* Add NOTICES
+* Add docs/example.md
+* Enhance build.gradle.kts to be able to scan the dependencies to produce a
+new NOTICES file
+* Update Simian's website
+
+Version 4.1.2 - Oct 23rd 2025
+* Refactor SimianMain to make it extendable
+
+Version 4.1.1 - Oct 22nd 2025
+* Fix license file in build.gradle.ks
+
+Version 4.1.0 - Oct 16th, 2025
+* Replace Ant with Gradle
+* Make Simian to be runnable to JDK 8+ (tested with JDK 8 and JDK 21)
+
+Version 4.0.0 - April 17th 2023
+* First release by Quandary Peak Research, Inc.
+
+Version 3.0.0
+* Removed support for .NET
+
+Version 2.5.10 - February 9th 2018
+* Fixed: raw line count is out by one when file ends with new line
+
+Version 2.5.9 - January 30th 2018
+* Fixed: error using multiple formatters from Ant task
+* Fixed: formatter names were unnecessarily case-sensitive
+
+Version 2.5.8 - November 23rd 2017
+* New: Initial Python (.py) support.
+
+Version 2.5.7 - October 4th 2017
+* New: Added '.mm' as a recognized extension for Objective-C++.
+
+Version 2.5.6 - September 19th 2017
+* Fixed: XML output swallows ']]' inside reported text.
+
+Version 2.5.5 - September 6th 2017
+* New: Reports include a unique fingerprint for each set of duplicate blocks.
+
+Version 2.5.4 - September 5th 2017
+* Fixes: unmatched ignore blocks prevent processing of subsequent files.
+
+Version 2.5.3 - August 25th 2017
+* Fixes: broken symlinks halt processing.
+* Fixes: can't disable boolean options on command-line.
+
+Version 2.5.2 - July 29th 2017
+* Added *.inl as an enhancement to the existing C++ language support.
+
+Version 2.5.1 - July 16th 2017
+* Fixes: exclude patterns not matching symlinked files
+
+Version 2.5 - June 19th 2017
+* Minimum Java version updated to 8
+* Fixes: symlinked files processed more than once
+* Fixes: first two lines joined when reporting duplicate text
+
+Version 2.4 - 28 September 2015
+* Minimum Java version updated to 7
+* Minimum threshold lowered to a single statement
+* Updated license agreement
+
+Version 2.3.35 - 18 December 2013
+* Fixed: UTF-16/32 Byte-Order-Mark encoded files not detected correctly.
+
+Version 2.3.34 - 3 June 2013
+* New: ignoreOverlappingBlocks to ignore wholly or partially overlapping blocks.
+
+Version 2.3.33 - 15 August 2011
+* Fixed: Visual Studio formatter not producing messages with the correct syntax.
+
+Version 2.3.32 - 28 April 2011
+* New: you can now specify multiple ignoreBlocks arguments.
+* Changed: SourceFile is now part of the public API.
+
+Version 2.3.31 - 3 February 2011
+* Fixed: XML reports could be rendered invalid by nested CDATA sections.
+
+Version 2.3.30 - 1 February 2011
+* New: Requires Java 5 or higher.
+* New: Updated checkstyle support to 5.x.
+* Fixed: A little too aggressive when identifying COBOL comments.
+* Fixed: Unable to use failOnDuplication=true when % duplication < 1%.
+* New: Language extension recognition is now case-insensitive.
+* New: More recognized file extensions for HTML: sht, shtm, shtml, and xhtml.
+* New: More recognized file extensions for Ruby: rjs, rake, and gemspec.
+* New: More recognized file extensions for JSP: jsf, jspf, tag, and tagf.
+* New: More recognized file extensions for XML: jspx, tagx, and tld.
+
+Version 2.2.25 - 10 June 2009
+* New: IBM System/360 Family Assembler support.
+* New: defaultLanguage option to set the default language to use when none can be inferred.
+* Fixed: The same file in multiple includes will only be loaded once.
+* Changed: Latest version (0.36.0.8) of IKVM for .NET.
+* Fixed: ampersand (&) in source file name causes invalid XML report.
+
+Version 2.2.24 - 20 February 2008
+* Fixed: ignoreBlocks not being handled correctly.
+* Fixed: SQL -- comments not being ignored correctly.
+
+Version 2.2.23 - 4 February 2008
+* New: Initial Groovy support.
+* Version 2.2.22 - 29 January 2008
+* Fixed: Failure return code even when no duplication.
+
+Version 2.2.21 - 23 November 2007
+* Fixed: Output from XML formatter not well formed.
+
+Version 2.2.20 - 21 November 2007
+* Fixed: IllegalStateException from XML formatter.
+
+Version 2.2.19 - 16 November 2007
+* Fixed: Reports sent to STDOUT may not be flushed.
+
+Version 2.2.18 - 8 November 2007
+* New: Option to print the duplicate text in reports (reportDuplicateText).
+
+Version 2.2.17 - 14 March 2007
+* Fixed bug: COBOL/ABAP comment lines considered significant.
+
+Version 2.2.16 - 6 March 2007
+* Fixed bug: YAML formatter missing version number.
+
+Version 2.2.15 - 1 March 2007
+* Public API changed slightly with respect to loading of files into a checker.
+* Added YAML formatter (yaml).
+
+Version 2.2.14 - 8 February 2007
+* Fixed bug: "Error: Illegal path" under Microsoft Windows.
+* Updated to latest version (0.32.0.0) of IKVM for .NET.
+
+Version 2.2.13 - 7 January 2007
+* Removed -recurse options and replaced with -includes and -excludes which both support shell-like file globbing.
+* No longer defaults to *.java
+* Added support for ignoring modifiers (private, protected, class, def, module, begin, end, etc.) in Ruby.
+
+Version 2.2.12 - 3 October 2006
+* Minor documentation fixes.
+
+Version 2.2.11 - 21 September 2006
+* Minor documentation fixes.
+* Fixed formatting of command-line options.
+* Fixed ignore blocks not matching with -ignoreIdentifierCase.
+
+Version 2.2.10 - 23 July 2006
+* Fixed bug: Visual Studio output format (formatter=vs) not recognized as command-line option.
+
+Version 2.2.9 - 3 July 2006
+* Added Visual Studio output format (formatter=vs).
+* Included a very simple DTD for describing the XML output format.
+
+Version 2.2.8 - 1 December 2005
+* Fixed bug: -ignoreBlocks not working with regions in C# (Jay Fields).
+* Updated to latest version (0.22.0.0) of IKVM for .NET.
+
+Version 2.2.7 - 12th August 2005
+* Added full support for Visual Base (language=vb) (Robert Cass).
+
+Version 2.2.6 - 30th July 2005
+* Added support for Objective-C (*.c, *.h, *.m) as an enhancement to the existing C language support.
+* Added support for SQL (*.sql) that correctly ignores comments .
+
+Version 2.2.5 - 26th July 2005
+* Updated to latest version (0.14.0.1) of IKVM for .NET.
+* Added a default stylesheet element (for simian.xsl) to the XML report (Einar Hoest).
+* Added option ignoreBlocks to ignore blocks with the specified start and end markers (Mark Webb).
+
+Version 2.2.4 - 30th March 2005
+* Updated to latest version (0.12.0.0) of IKVM for .NET.
+* Added command line option failOnDuplication[+|-] (default true). If true, the command line version will exit with retun code 1 if duplication is found; 0 otherwise. (Manoj Bharadwaj)
+
+Version 2.2.3 - 19th January 2005
+* Updated Open API - SourceFile is now included (Neil Bartlett).
+
+Version 2.2.2 - 7th November 2004
+* Updated Open API - Introduced language as an enumerated type.
+* Fixed bug: Invalid language options silently ignored.
+
+Version 2.2.1 - 13th September 2004
+* Open API to facilitate 3rd party open source tool development - refer to Licence Agreement.
+* Reorganised distribution zip file slightly to relieve clutter.
+
+Version 2.1.6-beta2 - 5th July 2004
+* Updated XSLT to include additional statistics (Robert Watkins).
+* Fixed bug: Incorrect statistics generated with XSLT (Benoit Xhenseval).
+
+Version 2.1.6-beta - 2nd July 2004
+* Now using IKVM for dot net integration.
+* Fixed missing link (jdk1.4.2_03.log.zip)
+* Changed default threshold from 9 to 6.
+* #region/#endregion lines are always ignored in C#. This is different to ignoreRegions which will ignore lines between (inclusive of) #region/#endregion.
+* Added option ignoreCharacterCase - Matches character literals irrespective of case.
+* Added option ignoreIdentifiers - Completely ignores all identifiers.
+* Added option ignoreVariableNames - Completely ignores variable names (field, parameter and local). Eg. int foo = 1; and int bar = 1 would both match. This option is currently only supported in Java and C.
+
+Version 2.1.5a - 23rd June 2004
+* Fixed bug: ignoreSubtypeNames and ignoreIdentifierCase conflicting in limited cases.
+
+Version 2.1.5 - 19th June 2004
+* Added option ignoreIdentifierCase - Matches identifiers irrespective of case. Eg. MyVariableName and myvariablename would both match.
+
+Version 2.1.4 - 18th June 2004
+* Added option ignoreRegions - ignores lines between #region/#endregion in C# (Randy Ridge)
+* Added c#, c++ and cplusplus as valid language options (Randy Ridge)
+* Updated wording of personal license agreement to avoid confusion. This doesn't affect existing personal license holders.
+
+Version 2.1.3 - 12th February 2004
+* Added summary details to xml formatter
+* Added option ignoreCharacters (Derek M Jones)
+* Added option ignoreLiterals - strings, numbers and characters (Derek M Jones)
+
+Version 2.1.2 - 4th February 2004
+* Command-line now exits with -1 on error, 1 if duplicates found and 0 if no duplicates found.
+* Added command-line option -config=FNAME to read the configuration from a file (where each line of the file specifies at most one of any of the valid command-line arguments).
+* Fixed bug: simian.exe produces a cast exception when formatting as XML (Matt Berther)
+
+Version 2.1.1 - 28th January 2004
+* Fixed bug: "Invalid option ..." (Andrew Harris)
+* Fixed bug: "Error: element already exists" (Andrew Harris)
+
+Version 2.1.0 - 27th January 2004
+* Now includes .NET version (simian.exe)
+* Java 1.3 no longer supported. Requires Java 1.4+
+* Command-line no longer silently ignores invalid options
+* Supports multiple filespecs (and recurse filespecs)
+* File names are now always absolute when reporting. Previous versions had left names as relative
+* Command-line Main class name changed from Main to SimianMain.
+* Command-line changed so that options must now be prefixed with a minus symbol (-) in addition to the now optional suffix (+/-) where appropriate, to indicate if the opion is to be enabled/disabled. This is in keeping with most command-line utilities. See command-line reference for more details.
+* Timing now reported as seconds instead of milliseconds.
+
+Version 2.0.3 - 18th January 2004
+* Increased file loading speed - JDK down by around 7 sec, Linux kernel down by around 11 sec
+
+Version 2.0.2 - 6th January 2004
+* Increased processing speed - JDK down from 48 to 32 sec, Linux kernel down from 4 to 3 min
+* Slightly reduced memory consumption - Linux 2.4 kernel down from 420 to 415MB
+* Command-line now warns when multiple filespecs found (Derek M Jones)
+
+Version 2.0.1 - 5th January 2004
+* Reduced memory consumption again. Linux 2.4 source base can be processed in 420MB of RAM and JDK in 60MB of RAM!
+* Fixed bug: Main incorrectly closing standard output stream.
+
+Version 2.0.0 - 4th January 2004
+* Significant improvements in memory consumption with no degredation in performance. Proccesses the entire linux 2.4 source base (3.6 million raw source lines) in under 4 mins on a P1.8GHz DELL laptop using under 512MB of RAM. Significantly, the JDK can now be processed in the same duration as previous versions in under 80MB of RAM. Version 1.x required around 512MB of ram! Many thanks to David Pattinson.
+* Text reporting now includes the raw source as well as the significant line total. (Derek M Jones)
+* Licensing changed to include a personal license in addition to the project and enterprise licenses.
+
+Version 1.9.14a - 3rd January 2004
+* Command-line recurse option now requires a suffix of +/- inline with other options. (Derek M Jones)
+* Command-line options now require +/- as a suffux rather than a prefix to fit in with standard Un*x-style commands. (Derek M Jones)
+* Added option ignoreCurlyBraces. Default is true for backwards compatibility. (Derek M Jones)
+* ignoreStringCase and ignoreStringContents no longer affect character literals. (Derek M Jones)
+
+Version 1.9.13k - 2nd January 2004
+* Added command-line option (recurse) to indicate directory recursion. Default is not to recurse. (Derek M Jones)
+* Fixed bug: Incorrect handling of line numbers when parsing mulit-line C-style comments. (Derek M Jones)
+
+Version 1.9.13g - 30th November 2003
+* Fixed bug: IllegalStateException when no formatter define for ant task. Now defaults to a plain formatter. (James Ross)
+
+Version 1.9.13e - 22 November 2003
+* Replaced +E emacs option on commmand-line interface with formatter=plain|xml|emacs parameter
+* Added emacs as a formatter type to ant task
+* Added command-line interface parameter toFile= to redirect output to a file
+* Renamed all instances of lineCount parameter to threshold
+* Renamed stylesheet.xsl to simian.xsl
+
+Version 1.9.13d - 19 November 2003
+* Command-line now supports language=value parameter (Pieter Bloemendaal)
+* Command-line now requires line count to be specified by lineCount=value
+
+Version 1.9.13a - 8 November 2003
+* Added emacs friendly output option (+E) for command-line version (Elliott Hughes)
+* Fixed bug: Ruby =begin/=end comment blocks not always ignored (Elliott Hughes)
+
+Version 1.9.13 - 5th November 2003
+* Added option to set language independent of file extension (Pieter Bloemendaal)
+* Ruby support for =begin/=end block comments (Elliot Hughes)
+* Ruby support for balancing parenthesis
+* COBOL support for balancing parenthesis
+* Balance square brackets (Java, C#, C, C++, JavaScript, Ruby): Ensures that expressions inside square brackets that are split across multiple physical lines are considered as one. Defaults to false.
+* Balance curly braces (Ruby): Ensures that expressions inside curly braces that are split across multiple physical lines are considered as one. Defaults to false.
+* Starting with this release, odd numbered versions will add new features, even number verisons will be bug fixes
+
+Version 1.9.12
+* Documentation updates (Pieter Bloemendaal)
+* Initial Ruby support
+
+Version 1.9.10 - 7th October 2003
+* Documentation updates
+
+Version 1.9.9 - 16th September 2003
+* Added stylesheet (kindly donated by Arvid Halsebus) to transform the XML report.
+* Fixed bug: Ant task fails even when 0 duplicates are found (Jason Yip).
+
+Version 1.9.8 - 27th August 2003
+* Ant task now reports duplications as warnings instead of errors if the failOnDuplication property is set to false. Defaults to false.
+* Added new property failOnDuplication to Checkstyle check. Defaults to true. Note this is different to the Ant task which defaults to false.
+* Checkstyle check now reports duplications as warnings instead of errors if the newly added failOnDuplication property is set to false.
+
+Version 1.9.7 - 23rd August 2003
+* Fixed bug: I/O error (such as no permissions) listing files will cause IllegalStateException
+* Minor documentation updates
+
+Version 1.9.6 - 13th August 2003
+* Fixed bug: command-line filespec incorrectly including partial matches
+
+Version 1.9.5 - 31st July 2003
+* Fixed bug: Incompatibility with JDK 1.3.1
+
+Version 1.9.4 - 26th July 2003
+* Added XML output as an Ant task formatter
+* Default (plain) Ant task formatter supports output to a file
+
+Version 1.9.3 - 10th July 2003
+* Added all fuzzy matching options to command line interface
+
+Version 1.9.2 - 9th July 2003
+* Added more fuzzy matching options for Ant and Checkstyle:
+* Balance Parentheses (Java, C#, C, C++, JavaScript): Ensures that expressions inside parenthesis that are split across multiple physical lines are considered as one.
+* Added instructions for integrating with IntelliJ as an external tool.
+
+Version 1.9.1 - 8th July 2003
+* Fixed bug: introduced bug with 1.9 not ignoring import statements
+* Added fuzzy matching options for Ant and Checkstyle:
+* Ignore strings (Java, C#, C, C++, JavaScript, COBOL): "one" and "two" would both match
+* Ignore string case (Java, C#, C, C++, JavaScript, COBOL): "Hello, World" and "HELLO, WORLD" would both match
+* Ignore numbers (Java, C#, C, C++, JavaScript, COBOL): int x = 1; and int x = 576; would both match
+* Ignore subtype names (Java): BufferedReader, StringReader and Reader would all match
+* Ignore modifiers (Java, C#, C, C++, JavaScript): public, protected, static, etc.
+
+Version 1.8 - 26th June 2003
+* Added SAP/ABAP (.abap files) support
+* Updated documentation for command line interface
+* Command line filespec is no longer case sensitive
+* Removed some inadvertant dependencies on JDK 1.4
+
+Version 1.7 - 24th June 2003
+* License now permits redistribution for non-commerical/open source projects
+
+Version 1.6 - 24th June 2003
+* Added public void setOutput(OutputStream) to SimianTask to facilitate Maven plugin development
+* Reduced memory footprint by as much as 23% when run against the JDK 1.4 source base
+
+Version 1.5 - June 23rd 2003
+* Added Javascript (.js files) support
+* Command line now supports comma separated filespec such as "*.java,*.js" for all java and javascript files
+
+Version 1.4 - June 23nd 2003
+* Added COBOL (.cbl, .cob, .sqb files) support
+
+Version 1.3 - June 22nd 2003
+* Fixed bug: comment characters not handled corrrectly in all appropriate places
+* Fixed bug: C and CPP #includes not handled correctly
+* Fixed bug: Java package and imports not handled correctly in all cases
+* Fixed bug: Total number of lines and files processed is incorrect
+
+Version 1.2 - June 21st 2003
+* Fixed bug: whitespace not ignored in all appropriate places
+* Ignores curly braces, default min number of lines now set to 9 to compensate
+
+Version 1.1 - June 21st 2003
+* Added C# (.cs files) support
+* Added C/C++ (.c, .cpp, .h and .hpp files) support
+* Added preliminary JSP (.jsp files) support
+* Main now supports file masks on the command line
+
+Version 1.0 - June 19th 2003
+* Initial release
+* Java (*.java files) support

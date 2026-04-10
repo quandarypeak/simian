@@ -1,18 +1,20 @@
 /*
- * Simian Similarity Analyzer
- * 
- * Copyright (c) 2023 Quandary Peak Research.
+ * Copyright 2022-2026 Quandary Peak Research, Inc.
  * Original authorship by Simon Harris.
- * 
- * Use of this software is permitted for educational or academic research
- * purposes only and is subject to the Quandary Peak Academic Software License.
- * See docs/license.txt for details.
- * 
- * Redistribution of this software in source or binary form is not permitted.
- * 
- * For non-academic or commercial use, please contact simian@quandarypeak.com.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
- 
+
 package com.quandarypeak.simian;
 
 import java.io.BufferedOutputStream;
@@ -30,7 +32,7 @@ import java.util.Objects;
 /**
  * Command line interface.
  */
-public final class SimianMain {
+public class SimianMain {
     private static final Option FORMATTER = new Option("formatter", Option.PARAMETER_SEP + "TYPE[:FNAME]", "Uses the specified output format when reporting");
 
     private static final Option INCLUDES = new Option("includes", Option.PARAMETER_SEP + "SPEC", "Including files matching the specified pattern");
@@ -50,7 +52,7 @@ public final class SimianMain {
     /**
      * Constructor marked private to prevent instantiation.
      */
-    private SimianMain(final String[] args) {
+    public SimianMain(final String[] args) {
         this.args = Objects.requireNonNull(args);
         options.setOption(Option.FAIL_ON_DUPLICATION, true);
     }
@@ -64,7 +66,7 @@ public final class SimianMain {
         new SimianMain(args).run();
     }
 
-    private void run() {
+    public void run() {
         LOG.println(Version.BANNER);
 
         for (final String arg : args) {
