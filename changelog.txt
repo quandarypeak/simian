@@ -1,6 +1,10 @@
 Simian Changelog
 See the improvements we've made with each version release of Simian Similarity Analyzer.
 
+Version 4.2.1 - April 1st, 2026
+* Clean-up README
+* Clean-up build.gradle.kts
+
 Version 4.2.0 - Mar 31st 2026
 * Switch to Apache 2.0 license
 * Update Apache 2.0 license headers to all java files
