@@ -81,6 +81,10 @@ public class SimianMain {
             processFormatter(Option.PARAMETER_SEP + FormatterFactory.PLAIN);
         }
 
+        //print the whole commandline
+        LOG.println("Input arguments:");
+        LOG.println(String.join(" ", args));
+
         final Checker checker = new Checker(formatters.size() == 1 ? formatters.get(0) : new CompositeAuditListener(formatters), options);
 
         final CompositeFileFilter excludes = new CompositeFileFilter(this.excludes);
