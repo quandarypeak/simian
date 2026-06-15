@@ -29,12 +29,12 @@ final class PythonParser extends AbstractStreamTokenizerParser {
 
     @Override
     public int parse(final Reader reader) throws IOException {
-        final StreamTokenizer tokenizer = new StreamTokenizer(reader);
+        final StreamTokenizer tokenizer = new StreamTokenizer(new PythonTripleQuoteNormalisingReader(reader));
 
         tokenizer.parseNumbers();
         tokenizer.wordChars('_', '_');
         tokenizer.wordChars('0', '9');
-        tokenizer.slashSlashComments(true);
+        tokenizer.slashSlashComments(false);
         tokenizer.slashStarComments(false);
         tokenizer.commentChar('#');
         tokenizer.whitespaceChars(';', ';');

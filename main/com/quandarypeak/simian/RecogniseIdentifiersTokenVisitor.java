@@ -111,12 +111,19 @@ final class RecogniseIdentifiersTokenVisitor extends DecoratorTokenVisitor {
     }
 
     private boolean isAllUpperCase(final String name) {
+        boolean hasUpperCase = false;
         for (int i = name.length() - 1; i >= 0; --i) {
-            if (Character.isLowerCase(name.charAt(i))) {
+            final char c = name.charAt(i);
+            if (Character.isLowerCase(c)) {
                 return false;
             }
+            if (Character.isUpperCase(c)) {
+                hasUpperCase = true;
+            }
         }
-        return true;
+        // Require at least one actual uppercase letter — underscore-only names like '_'
+        // and '__' have no lowercase chars but are variables, not constants.
+        return hasUpperCase;
     }
 
     private boolean isTypeName(final String name) {

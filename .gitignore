@@ -6,6 +6,7 @@
 CVS
 .bin
 .build
+.gradle
 *.rbc
 *.tmproj
 .idea/workspace.xml
