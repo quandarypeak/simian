@@ -1,6 +1,16 @@
 Simian Changelog
 See the improvements we've made with each version release of Simian Similarity Analyzer.
 
+Version 4.2.2 - June 15th, 2026
+* Enhanced Python support: triple-quoted strings normalised before tokenisation to prevent line-sync errors
+* Enhanced Python support: string literal prefixes (f, b, r, u, rb, fr, etc.) stripped from fingerprints
+* Enhanced Python support: full keyword and built-in type recognition (including match/case soft keywords)
+* Enhanced Python support: import lines suppressed; async treated as a modifier
+* Fixed: underscore-only identifiers (_) incorrectly classified as CONSTANT instead of VARIABLE
+* Fixed: floor-division operator (//) no longer treated as a line comment in Python files
+* Added "python" as an accepted value for the -language option (alongside existing "py")
+* Updated README to document Python language options
+
 Version 4.2.1 - April 1st, 2026
 * Clean-up README
 * Clean-up build.gradle.kts
