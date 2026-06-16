@@ -18,6 +18,6 @@ public class TypeScriptParserFactoryTest {
         Parser parser = new TypeScriptParserFactory().createParser(lineListener, new Options());
         int ret = parser.parse(new FileReader(new File("test/mockups/test.ts")));
         
-        Assert.assertTrue("Asserting the parsing return value: " + ret, ret == 47);        
+        Assert.assertTrue("Asserting the parsing return value: " + ret, ret == 49);
     }
 }
