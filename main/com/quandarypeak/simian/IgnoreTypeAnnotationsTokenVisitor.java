@@ -32,16 +32,24 @@ package com.quandarypeak.simian;
  *   <li>Simple names: {@code : string}, {@code : MyClass}</li>
  *   <li>Generic types: {@code : Array<string>}, {@code : Map<string, number>}</li>
  *   <li>Array types: {@code : string[]}</li>
- *   <li>Tuple types: {@code : [string, number]}, {@code : [A, B, C]}</li>
+ *   <li>Tuple types: {@code : [string, number]}, {@code : [A, B, C]}, {@code : [string[], number]}</li>
  *   <li>Union and intersection types: {@code : string | number}, {@code : A & B}</li>
  *   <li>Combinations: {@code : Array<string> | null} (up to the first non-TYPE token)</li>
  * </ul>
  *
- * <p><b>Known limitation:</b> Literal keyword types ({@code null}, {@code undefined},
- * {@code true}, {@code false}) are classified as KEYWORD rather than TYPE and therefore
- * survive suppression. {@code string | null} will suppress {@code string} but leave
- * {@code | null} visible. Use {@link Option#IGNORE_IDENTIFIERS} to fully erase all
- * identifiers including keyword types.
+ * <p><b>Known limitations:</b>
+ * <ul>
+ *   <li>Literal keyword types ({@code null}, {@code undefined}, {@code true}, {@code false})
+ *       are classified as KEYWORD rather than TYPE and therefore survive suppression.
+ *       {@code string | null} will suppress {@code string} but leave {@code | null} visible.
+ *       Use {@link Option#IGNORE_IDENTIFIERS} to fully erase all identifiers including
+ *       keyword types.</li>
+ *   <li>A {@code :} that opens a ternary else-branch followed by an array literal
+ *       ({@code cond ? val : [a, b]}) is indistinguishable from a tuple type annotation
+ *       and the array literal will be incorrectly suppressed. This is an inherent ambiguity
+ *       in the token-stream approach and cannot be resolved without a full expression
+ *       parser.</li>
+ * </ul>
  *
  * <p>This visitor must sit between the base visitor chain and
  * {@link RecogniseIdentifiersTokenVisitor} so that it receives TYPE-classified identifiers.
@@ -53,6 +61,9 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
 
     private State _state = State.NORMAL;
     private int _genericDepth;
+    // Depth counter for nested '[' inside an array/tuple type — needed because tuple
+    // elements can themselves be array types, e.g.: [string[], number].
+    private int _arrayDepth;
 
     IgnoreTypeAnnotationsTokenVisitor(final TokenVisitor decorated) {
         super(decorated);
@@ -62,6 +73,7 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
     public void visitFile() {
         _state = State.NORMAL;
         _genericDepth = 0;
+        _arrayDepth = 0;
         super.visitFile();
     }
 
@@ -80,6 +92,7 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
             case PENDING_COLON:
                 if (c == '[') {
                     // Tuple type annotation: ': [string, number]' — suppress ':' + entire tuple.
+                    _arrayDepth = 0;
                     _state = State.IN_ARRAY;
                 } else {
                     // Next token is punctuation (not a TYPE identifier) — flush the buffered ':'.
@@ -96,6 +109,7 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
                     _genericDepth = 1;
                     _state = State.IN_GENERIC;
                 } else if (c == '[') {
+                    _arrayDepth = 0;
                     _state = State.IN_ARRAY;
                 } else {
                     // End of type annotation (e.g. '=', ',', ')', '{', '}').
@@ -114,10 +128,16 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
                 break;
 
             case IN_ARRAY:
-                if (c == ']') {
-                    _state = State.IN_TYPE;
+                if (c == '[') {
+                    _arrayDepth++;
+                } else if (c == ']') {
+                    if (_arrayDepth > 0) {
+                        _arrayDepth--;
+                    } else {
+                        _state = State.IN_TYPE;
+                    }
                 }
-                // Suppress.
+                // Suppress all other punctuation inside the array/tuple type.
                 break;
         }
     }
@@ -188,5 +208,6 @@ final class IgnoreTypeAnnotationsTokenVisitor extends DecoratorTokenVisitor {
         }
         _state = State.NORMAL;
         _genericDepth = 0;
+        _arrayDepth = 0;
     }
 }

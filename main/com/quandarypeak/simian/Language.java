@@ -121,6 +121,11 @@ public final class Language implements Comparable<Language> {
     public static final Language SWIFT = new Language("Swift", new DefaultParserFactory(), "swift");
 
     /**
+     * The Go language.
+     */
+    public static final Language GO = new Language("Go", new GoParserFactory(), "go");
+
+    /**
      * The Python language.
      */
     public static final Language PYTHON = new Language("Python", new PythonParserFactory(), "py", "python");

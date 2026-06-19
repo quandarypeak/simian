@@ -681,4 +681,27 @@ public class TypeScriptParserFactoryTest {
         final ParseResult rSimple = parse("const pair: string = [1, 2];\n", opts);
         assertEquals(rTuple.get(0), rSimple.get(0));
     }
+
+    @Test
+    public void ignoreTypeAnnotationsSuppressesNestedArrayTypeInTuple() throws IOException {
+        // Tuple elements can themselves be array types, e.g. '[string[], number]'.
+        // The inner ']' of 'string[]' must NOT exit suppression — the _arrayDepth
+        // counter tracks nesting so only the outer ']' terminates the tuple.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_TYPE_ANNOTATIONS, Boolean.TRUE);
+        final ParseResult rNested = parse("const x: [string[], number] = [];\n", opts);
+        final ParseResult rFlat   = parse("const x: [string, number] = [];\n", opts);
+        assertEquals(rNested.get(0), rFlat.get(0));
+    }
+
+    @Test
+    public void ignoreTypeAnnotationsSuppressesDeepNestedArrayInTuple() throws IOException {
+        // Two levels of nesting: '[string[][], number]' — '[][]' generates two '[' tokens
+        // (depth goes to 1 then 2) and two ']' tokens before the outer ']' closes the tuple.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_TYPE_ANNOTATIONS, Boolean.TRUE);
+        final ParseResult rDeep  = parse("const x: [string[][], number] = [];\n", opts);
+        final ParseResult rFlat  = parse("const x: [string, number] = [];\n", opts);
+        assertEquals(rDeep.get(0), rFlat.get(0));
+    }
 }
