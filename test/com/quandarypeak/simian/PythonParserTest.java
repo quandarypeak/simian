@@ -44,7 +44,7 @@ import static org.junit.Assert.assertFalse;
  *   - Comments are stripped entirely; blank/comment-only lines emit no fingerprint
  *   - Indentation is stripped (leading whitespace is insignificant whitespace)
  */
-public class PythonParserFactoryTest {
+public class PythonParserTest {
 
     // -------------------------------------------------------------------------
     // Test infrastructure
@@ -103,7 +103,7 @@ public class PythonParserFactoryTest {
     private static ParseResult parseResource(final String path, final Options opts) throws IOException {
         final CapturingLineListener listener = new CapturingLineListener();
         final Parser parser = new PythonParserFactory().createParser(listener, opts);
-        try (InputStream is = PythonParserFactoryTest.class.getResourceAsStream(path);
+        try (InputStream is = PythonParserTest.class.getResourceAsStream(path);
              Reader reader = new InputStreamReader(is, "UTF-8")) {
             final int rawLines = parser.parse(reader);
             return new ParseResult(rawLines, listener.lines);
@@ -850,14 +850,14 @@ public class PythonParserFactoryTest {
     }
 
     // -------------------------------------------------------------------------
-    // 16. Comprehensive sample file (test/mockups/sample.py)
+    // 16. Comprehensive sample file (test/data/python/sample.py)
     //     Verifies the parser handles a realistic Python file without errors,
     //     and that key structural fingerprints are produced correctly.
     // -------------------------------------------------------------------------
 
     @Test
     public void sampleFileParsesSuccessfully() throws IOException {
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertTrue("Sample file should produce at least one raw line", r.rawLineCount > 0);
         assertTrue("Sample file should produce at least one fingerprint", r.count() > 0);
         assertTrue("Blank and comment lines should reduce fingerprint count vs raw line count",
@@ -867,7 +867,7 @@ public class PythonParserFactoryTest {
     @Test
     public void sampleFileRawLineCount() throws IOException {
         // The sample file has exactly 137 lines (terminated by a final newline).
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertEquals(137, r.rawLineCount);
     }
 
@@ -875,7 +875,7 @@ public class PythonParserFactoryTest {
     public void sampleFileImportLinesAreSuppressed() throws IOException {
         // IgnoreLinesTokenVisitor with trigger "import" suppresses all import statements.
         // This matches Simian's C/C++ behaviour where #include lines are always dropped.
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertFalse("'import os' should be suppressed",  r.contains("import os"));
         assertFalse("'import sys' should be suppressed", r.contains("import sys"));
         // "from typing import ..." is also suppressed because 'import' appears mid-line.
@@ -885,7 +885,7 @@ public class PythonParserFactoryTest {
 
     @Test
     public void sampleFileContainsExpectedFunctionHeaderFingerprints() throws IOException {
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertTrue("paginate function header expected",
                 r.contains("def paginate(total:int,page_size:int)->int:"));
         assertTrue("Animal class header expected",
@@ -898,7 +898,7 @@ public class PythonParserFactoryTest {
     public void sampleFileFloorDivisionLineProducesFullFingerprint() throws IOException {
         // The 'paginate' function body contains 'return total // page_size'.
         // With slashSlashComments(false) the full fingerprint is produced.
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertTrue("Full floor-division fingerprint must be present",
                 r.contains("return total//page_size"));
         assertFalse("Truncated fingerprint must not be present",
@@ -907,7 +907,7 @@ public class PythonParserFactoryTest {
 
     @Test
     public void sampleFileDecoratorFingerprintsPresent() throws IOException {
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertTrue("@property decorator fingerprint expected",   r.contains("@property"));
         assertTrue("@staticmethod decorator fingerprint expected", r.contains("@staticmethod"));
         assertTrue("@classmethod decorator fingerprint expected", r.contains("@classmethod"));
@@ -918,8 +918,8 @@ public class PythonParserFactoryTest {
         final Options optsIgnoreStrings = bare();
         optsIgnoreStrings.setOption(Option.IGNORE_STRINGS, true);
 
-        final ParseResult withStrings    = parseResource("/mockups/sample.py", bare());
-        final ParseResult withoutStrings = parseResource("/mockups/sample.py", optsIgnoreStrings);
+        final ParseResult withStrings    = parseResource("/data/python/sample.py", bare());
+        final ParseResult withoutStrings = parseResource("/data/python/sample.py", optsIgnoreStrings);
 
         assertEquals("IGNORE_STRINGS should not change raw line count",
                 withStrings.rawLineCount, withoutStrings.rawLineCount);
@@ -933,7 +933,7 @@ public class PythonParserFactoryTest {
     public void sampleFileDocstringFingerprintIsNormalisedString() throws IOException {
         // sample.py line 15: """Return a personalised greeting string."""
         // After PythonTripleQuoteNormalisingReader this becomes a plain double-quoted string.
-        final ParseResult r = parseResource("/mockups/sample.py", bare());
+        final ParseResult r = parseResource("/data/python/sample.py", bare());
         assertTrue("Single-line docstring should appear as a plain double-quoted string",
                 r.contains("\"Return a personalised greeting string.\""));
     }
@@ -943,8 +943,8 @@ public class PythonParserFactoryTest {
         final Options optsIgnore = bare();
         optsIgnore.setOption(Option.IGNORE_IDENTIFIERS, true);
 
-        final ParseResult normal  = parseResource("/mockups/sample.py", bare());
-        final ParseResult ignored = parseResource("/mockups/sample.py", optsIgnore);
+        final ParseResult normal  = parseResource("/data/python/sample.py", bare());
+        final ParseResult ignored = parseResource("/data/python/sample.py", optsIgnore);
 
         assertEquals("IGNORE_IDENTIFIERS should not change raw line count",
                 normal.rawLineCount, ignored.rawLineCount);
