@@ -1,7 +1,4 @@
-package test;
-
-import com.quandarypeak.simian.LineListener;
-import com.quandarypeak.simian.LineBuffer;
+package com.quandarypeak.simian;
 
 public class TestLineListener implements LineListener {
     @Override

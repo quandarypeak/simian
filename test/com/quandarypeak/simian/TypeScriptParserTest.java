@@ -19,6 +19,9 @@ package com.quandarypeak.simian;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +98,16 @@ public class TypeScriptParserTest {
         final Parser parser = new TypeScriptParserFactory().createParser(listener, opts);
         final int rawLines = parser.parse(new StringReader(code));
         return new ParseResult(rawLines, listener.lines);
+    }
+
+    private static ParseResult parseResource(final String path, final Options opts) throws IOException {
+        final CapturingLineListener listener = new CapturingLineListener();
+        final Parser parser = new TypeScriptParserFactory().createParser(listener, opts);
+        try (InputStream is = TypeScriptParserTest.class.getResourceAsStream(path);
+             Reader reader = new InputStreamReader(is, "UTF-8")) {
+            final int rawLines = parser.parse(reader);
+            return new ParseResult(rawLines, listener.lines);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -703,5 +716,15 @@ public class TypeScriptParserTest {
         final ParseResult rDeep  = parse("const x: [string[][], number] = [];\n", opts);
         final ParseResult rFlat  = parse("const x: [string, number] = [];\n", opts);
         assertEquals(rDeep.get(0), rFlat.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. Sample file
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void sampleFileParsesSuccessfully() throws IOException {
+        final ParseResult r = parseResource("/data/typeScript/test.ts", bare());
+        assertEquals(49, r.rawLineCount);
     }
 }
