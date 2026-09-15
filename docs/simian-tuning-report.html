@@ -1,0 +1,536 @@
+<title>Tuning Simian Without Guessing</title>
+<style>
+  :root{
+    color-scheme: light;
+    --paper:      #f3f2ee;
+    --panel:      #fbfaf7;
+    --ink:        #1b1b19;
+    --ink-2:      #4a4a46;
+    --muted:      #85837c;
+    --hair:       #ddd9d0;
+    --accent:     #3b4f9e;
+    --accent-ink: #ffffff;
+    --accent-soft:#e4e8f7;
+    --code-bg:    #eae7dd;
+    --code-ink:   #2a2a26;
+    --good:       #2f6b3a;
+    --good-soft:  #e2ede2;
+    --warn:       #9a5b18;
+    --warn-soft:  #f4e6d2;
+    --bad:        #a03a34;
+    --bad-soft:   #f3e0dd;
+    --shadow: 0 1px 2px rgba(20,20,15,.04), 0 6px 20px rgba(20,20,15,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --paper:      #131317;
+      --panel:      #1a1a1f;
+      --ink:        #ececea;
+      --ink-2:      #b9b8b2;
+      --muted:      #85837c;
+      --hair:       #303036;
+      --accent:     #8b9de8;
+      --accent-ink: #10121c;
+      --accent-soft:#232a45;
+      --code-bg:    #1e1f26;
+      --code-ink:   #dcdad0;
+      --good:       #7fbf8a;
+      --good-soft:  #1c2b1e;
+      --warn:       #e0ab5f;
+      --warn-soft:  #3a2d16;
+      --bad:        #e0847c;
+      --bad-soft:   #3a201d;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:      #131317;
+    --panel:      #1a1a1f;
+    --ink:        #ececea;
+    --ink-2:      #b9b8b2;
+    --muted:      #85837c;
+    --hair:       #303036;
+    --accent:     #8b9de8;
+    --accent-ink: #10121c;
+    --accent-soft:#232a45;
+    --code-bg:    #1e1f26;
+    --code-ink:   #dcdad0;
+    --good:       #7fbf8a;
+    --good-soft:  #1c2b1e;
+    --warn:       #e0ab5f;
+    --warn-soft:  #3a2d16;
+    --bad:        #e0847c;
+    --bad-soft:   #3a201d;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+  }
+
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    font-size:17px; line-height:1.65;
+  }
+  ::selection{ background:var(--accent-soft); }
+  code, .mono{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; }
+
+  .page{ max-width:1180px; margin:0 auto; padding:0 1.4rem; display:grid; grid-template-columns:220px minmax(0,720px); gap:3.2rem; }
+  @media (max-width:980px){ .page{ grid-template-columns:1fr; } }
+
+  .masthead{ grid-column:1 / -1; max-width:760px; margin:0 auto; padding:4.2rem 0 2.6rem; text-align:left; }
+  .kicker{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.72rem; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 1rem;
+  }
+  .masthead h1{
+    font-size:clamp(2.1rem,4.4vw,3.05rem); line-height:1.08; margin:0 0 1rem; font-weight:600;
+    text-wrap:balance;
+  }
+  .masthead .dek{ font-size:1.18rem; color:var(--ink-2); max-width:58ch; margin:0 0 1.6rem; text-wrap:balance; }
+  .byline{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    display:flex; gap:1.4rem; flex-wrap:wrap; border-top:1px solid var(--hair); padding-top:1rem;
+  }
+  .byline b{ color:var(--ink-2); font-weight:600; }
+
+  nav.toc{ position:sticky; top:2.4rem; align-self:start; padding-top:.3rem; }
+  nav.toc .label{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.7rem;
+  }
+  nav.toc ol{ list-style:none; margin:0; padding:0; counter-reset:toc; }
+  nav.toc li{ counter-increment:toc; margin-bottom:.55rem; }
+  nav.toc a{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.86rem; color:var(--ink-2);
+    text-decoration:none; display:flex; gap:.5em;
+  }
+  nav.toc a::before{
+    content: counter(toc) "."; color:var(--muted); font-variant-numeric:tabular-nums; flex:none;
+  }
+  nav.toc a:hover{ color:var(--accent); }
+  @media (max-width:980px){
+    nav.toc{ position:static; border-bottom:1px solid var(--hair); padding-bottom:1.4rem; margin-bottom:.6rem; }
+    nav.toc ol{ columns:2; }
+  }
+
+  article{ padding-bottom:5rem; min-width:0; }
+  section{ margin-top:3.2rem; scroll-margin-top:2rem; }
+  section:first-of-type{ margin-top:0; }
+  h2{
+    font-size:1.5rem; font-weight:600; margin:0 0 1.1rem; display:flex; align-items:baseline; gap:.6rem;
+    text-wrap:balance;
+  }
+  h2 .num{ font-family:ui-monospace,monospace; font-size:.95rem; color:var(--accent); font-weight:700; }
+  h3{ font-size:1.1rem; font-weight:600; margin:2rem 0 .7rem; }
+  p{ margin:0 0 1.05rem; max-width:70ch; }
+  p, li{ color:var(--ink-2); }
+  strong{ color:var(--ink); font-weight:600; }
+  a{ color:var(--accent); }
+  ul, ol.plain{ margin:0 0 1.1rem; padding-left:1.3rem; max-width:68ch; }
+  li{ margin-bottom:.4rem; }
+
+  .lede{ font-size:1.03rem; color:var(--ink); }
+
+  code.inline{
+    background:var(--code-bg); color:var(--code-ink); padding:.05rem .35rem; border-radius:4px;
+    font-size:.86em;
+  }
+
+  .note{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 8px 8px 0;
+    padding:.9rem 1.1rem; margin:1.3rem 0; font-size:.93rem;
+  }
+  .note .tag{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; font-weight:700; color:var(--accent); display:block; margin-bottom:.35rem;
+  }
+  .note p{ margin:0; color:var(--ink); max-width:none; }
+  .note code{ background:rgba(0,0,0,0.06); }
+
+  .note.warn{ border-left-color:var(--warn); background:var(--warn-soft); }
+  .note.warn .tag{ color:var(--warn); }
+
+  :root[data-theme="dark"] .note code{ background:rgba(255,255,255,0.08); }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .note code{ background:rgba(255,255,255,0.08); } }
+
+  pre.code{
+    background:var(--code-bg); color:var(--code-ink); border-radius:8px; padding:.95rem 1.1rem;
+    font-size:.82rem; line-height:1.6; overflow-x:auto; margin:1.1rem 0; box-shadow:var(--shadow);
+  }
+  pre.code .c{ color:var(--muted); }
+  pre.code .h{ color:var(--accent); font-weight:600; }
+
+  figure{ margin:1.8rem 0; padding:1.3rem 1.3rem 1rem; background:var(--panel); border:1px solid var(--hair);
+    border-radius:10px; box-shadow:var(--shadow); overflow-x:auto; }
+  figure svg{ display:block; max-width:100%; height:auto; margin:0 auto; }
+  figcaption{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    margin-top:.8rem; padding-top:.7rem; border-top:1px solid var(--hair); max-width:none;
+  }
+
+  .tbl-wrap{ overflow-x:auto; margin:1.2rem 0; }
+  table{ border-collapse:collapse; width:100%; font-size:.85rem; }
+  table caption{ text-align:left; font-size:.78rem; color:var(--muted); margin-bottom:.5rem;
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }
+  th, td{ border-bottom:1px solid var(--hair); padding:.5rem .75rem; text-align:left; vertical-align:top; }
+  th{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.66rem; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); font-weight:700;
+  }
+  td{ color:var(--ink-2); font-size:.84rem; }
+  td code, th code{ font-size:.84em; }
+  tr:last-child td{ border-bottom:none; }
+  td.grp{ color:var(--accent); font-weight:700; font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; }
+
+  .refs{ font-size:.86rem; }
+  .refs li{ margin-bottom:.6rem; }
+  .refs code{ font-size:.84em; }
+
+  hr.rule{ border:none; border-top:1px solid var(--hair); margin:2.6rem 0; }
+
+  footer.page-footer{
+    grid-column:1 / -1; max-width:760px; margin:0 auto; padding:0 0 4rem; color:var(--muted);
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.8rem; border-top:1px solid var(--hair);
+    padding-top:1.4rem;
+  }
+</style>
+
+<div class="masthead">
+  <p class="kicker">Technical report</p>
+  <h1>Tuning Simian Without Guessing</h1>
+  <p class="dek">A workflow for choosing <code class="inline">-threshold</code> and the <code class="inline">TokenVisitor</code>-related options together: how the right starting point depends on the source you are scanning, and how to move toward a configuration that finds real duplication without manufacturing coincidences.</p>
+  <div class="byline">
+    <span><b>Subject</b> Simian Similarity Analyzer v4.2.2</span>
+    <span><b>Grounded in</b> a real, reproducible worked example (Appendix A)</span>
+    <span><b>Companion to</b> "How Simian Catches Duplicate Code" and "Inside the TokenVisitor Chain"</span>
+  </div>
+</div>
+
+<div class="page">
+  <nav class="toc">
+    <p class="label">Contents</p>
+    <ol>
+      <li><a href="#tradeoff">The trade-off, precisely</a></li>
+      <li><a href="#twoknobs">Two knobs, not one dial</a></li>
+      <li><a href="#depends">Why the source dictates the start</a></li>
+      <li><a href="#stepzero">Step zero: exclude before you tune</a></li>
+      <li><a href="#workflow">The tuning workflow</a></li>
+      <li><a href="#worked">Worked example: catching one, not two</a></li>
+      <li><a href="#narrow">Prefer narrow to blunt</a></li>
+      <li><a href="#diagnostic">Diagnostic table</a></li>
+      <li><a href="#validate">Validating without ground truth</a></li>
+      <li><a href="#bylanguage">Starting points by language</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#appendix">Appendix: reproducing the example</a></li>
+    </ol>
+  </nav>
+
+  <article>
+
+    <section id="tradeoff">
+      <h2><span class="num">1</span> The trade-off, precisely</h2>
+      <p class="lede">Every fuzzy-matching option in Simian trades precision for recall, or the reverse, and <code class="inline">-threshold</code> trades both against each other along a different axis. Loosen either lever and you will eventually catch a real duplicate that a stricter configuration missed, a true positive. Loosen either lever too far and you will start catching coincidences, structurally identical code that has nothing to do with duplication worth fixing, a false positive. There is no setting that maximizes both at once for every codebase; the right configuration is a property of the source you are scanning, not a property of Simian.</p>
+      <p>This report is about the workflow for finding that configuration deliberately, verified against a real, reproducible example rather than asserted in the abstract. It assumes the mechanics from the two companion reports: how <code class="inline">-threshold</code> sets a sliding-window size and how the <code class="inline">TokenVisitor</code> chain canonicalizes each line before it is hashed. What follows is about combining those mechanics on purpose.</p>
+    </section>
+
+    <section id="twoknobs">
+      <h2><span class="num">2</span> Two knobs, not one dial</h2>
+      <p>It helps to keep the two levers conceptually separate, because they fail in different ways.</p>
+      <ul>
+        <li><strong>Threshold</strong> answers "how many consecutive matching lines count as a duplicate worth reporting." It is completely blind to <em>why</em> two blocks matched. Raising it filters out short coincidences regardless of their cause; lowering it admits shorter coincidences regardless of their cause. It is a blunt, content-agnostic backstop.</li>
+        <li><strong><code class="inline">TokenVisitor</code> options</strong> (<code class="inline">-ignoreVariableNames</code>, <code class="inline">-ignoreTypeAnnotations</code>, <code class="inline">-ignoreIdentifiers</code>, and the rest of the catalog) answer "what counts as the same line." Each one erases a specific kind of cosmetic difference. They are precise about <em>what</em> they erase, but blind to <em>where</em>: an option that correctly reveals a duplicated algorithm will just as happily reveal a coincidentally identical getter, if both happen to canonicalize to the same text.</li>
+      </ul>
+      <p>Section 6 plots six real runs of the same file on both axes at once. The short version: threshold alone cannot fix a false positive caused by an over-broad option, and no option choice can fix a false negative caused by too high a threshold. Both levers have to move.</p>
+    </section>
+
+    <section id="depends">
+      <h2><span class="num">3</span> Why the source dictates the start</h2>
+      <p>The two companion reports already establish that different languages need different <code class="inline">TokenVisitor</code> wiring. The same is true, more broadly, of different kinds of source within one language, and it is worth naming the patterns before touching a single option:</p>
+      <ul>
+        <li><strong>Boilerplate-heavy OOP code</strong> (getters, setters, constructors, equals/hashCode) produces many short blocks that are structurally identical by convention, not by copy-paste. This is exactly the shape of false positive that aggressive identifier-erasure options manufacture, demonstrated concretely in section 6.</li>
+        <li><strong>Generated or templated code</strong> (protobuf output, ORM-generated accessors, scaffolded test fixtures) is often deliberately repetitive. Simian will find the repetition accurately; the judgment call is whether that repetition is <em>actionable</em>. Excluding generated directories outright (section 4) is usually more honest than tuning options to hide them.</li>
+        <li><strong>Test suites</strong> frequently repeat a setup/assert shape across many cases on purpose (that is what a table-driven test is). A threshold tuned for production code will over-report here; a separate, higher threshold or a narrower option set for test directories is often warranted.</li>
+        <li><strong>Type-annotation-heavy TypeScript</strong> and <strong>generic-heavy Java</strong> hide real duplication behind cosmetic type differences, the exact case <code class="inline">-ignoreTypeAnnotations</code> and <code class="inline">-ignoreSubtypeNames</code> exist for (see the TypeScript chapter of the companion algorithm report).</li>
+        <li><strong>Indentation-only languages</strong> (Python) do not need a different threshold in principle, since Simian counts significant lines rather than indentation levels, but short, deeply nested helper functions common in Python can still sit right at the threshold boundary and deserve a second look when they first appear in a report.</li>
+      </ul>
+      <p>None of this changes the mechanism. It changes where you should expect to start on the two axes from section 2, and what kind of false positive to watch for first.</p>
+    </section>
+
+    <section id="stepzero">
+      <h2><span class="num">4</span> Step zero: exclude before you tune</h2>
+      <div class="note warn">
+        <span class="tag">The most common tuning mistake</span>
+        <p>No combination of <code class="inline">-threshold</code> and <code class="inline">TokenVisitor</code> options can fix "we found duplication inside a vendored copy of a library" or "we found duplication between generated files and the template that generated them." That is a file-selection problem, not a fuzzy-matching problem. Narrow the input with <code class="inline">-includes</code>/<code class="inline">-excludes</code>, or wrap known-noisy regions in <code class="inline">-ignoreBlocks</code>, before spending any effort on the options in this report. Tuning options against untrimmed input just makes the real signal harder to see underneath the noise.</p>
+      </div>
+      <p>Once the input set is a codebase's own hand-written source, the remaining tuning question is entirely about the two knobs from section 2.</p>
+    </section>
+
+    <section id="workflow">
+      <h2><span class="num">5</span> The tuning workflow</h2>
+      <p>The workflow below is deliberately a loop with small, single-variable steps rather than a search for the "right" settings in one attempt. Changing one lever at a time is what makes each new match, or each match that disappears, attributable to a specific decision; changing several things at once produces a result you cannot explain.</p>
+      <ol class="plain">
+        <li><strong>Run with the defaults</strong> (or, for a first pass, whatever threshold roughly matches your team's idea of "a meaningful block," commonly 6 to 10 lines). Do not enable any fuzzy-matching options yet.</li>
+        <li><strong>Read the matches, not just the count.</strong> <code class="inline">-reportDuplicateText</code> is not optional at this stage: a count with no text tells you nothing about whether a match is real duplication or a coincidence.</li>
+        <li><strong>Classify what you see</strong> against three outcomes: nothing found (suspicious if you already know of duplicated code), matches that are all clearly real, or matches that include something you would not have flagged yourself.</li>
+        <li><strong>If real duplication is being missed</strong>, loosen exactly one lever: either the single narrowest option that would erase the specific cosmetic difference you can see in the source (section 7), or the threshold, by a small amount. Re-run.</li>
+        <li><strong>If a match looks like a coincidence</strong>, tighten exactly one lever: swap a broad option for a narrower one that still catches your real case (section 7), or raise the threshold, or exclude the specific file or block. Re-run.</li>
+        <li><strong>Repeat 2 through 5</strong> until a pass produces no new surprises, neither obviously-missing duplication nor obviously-wrong matches.</li>
+        <li><strong>Validate before trusting the result</strong> (section 9), then record the configuration next to the codebase it was tuned for, since section 3 means it will not transfer unchanged to a different one.</li>
+      </ol>
+
+      <figure>
+        <svg viewBox="0 0 760 520" role="img" aria-label="Flowchart of the tuning workflow: run with current settings, inspect the matches, then branch on the verdict. Too few matches loosens one lever and reruns. Too many, or matches that look like coincidences, tightens one lever and reruns. A correct-looking result proceeds to validation and locking in the configuration.">
+          <defs>
+            <marker id="tw-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <style>
+            .tw-lbl{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:12px; }
+            .tw-sub{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:10px; }
+          </style>
+
+          <rect x="270" y="14" width="220" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="380" y="40" text-anchor="middle" class="tw-lbl">Run with current settings</text>
+
+          <line x1="380" y1="56" x2="380" y2="80" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <rect x="255" y="84" width="250" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="380" y="110" text-anchor="middle" class="tw-lbl">Inspect the matches (read the text)</text>
+
+          <line x1="380" y1="126" x2="380" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <polygon points="380,150 460,190 380,230 300,190" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="380" y="186" text-anchor="middle" class="tw-lbl">Verdict?</text>
+          <text x="380" y="202" text-anchor="middle" class="tw-sub" fill="var(--muted)">too few / right / too many</text>
+
+          <!-- too few branch: left -->
+          <line x1="300" y1="190" x2="150" y2="190" stroke="currentColor" stroke-width="1.3"/>
+          <line x1="150" y1="190" x2="150" y2="230" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <rect x="20" y="234" width="260" height="56" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.3"/>
+          <text x="150" y="256" text-anchor="middle" class="tw-lbl" fill="var(--bad)">Too few: real duplication missing</text>
+          <text x="150" y="274" text-anchor="middle" class="tw-sub" fill="var(--bad)">loosen one lever (&#167;7), re-run</text>
+
+          <!-- too many branch: right -->
+          <line x1="460" y1="190" x2="610" y2="190" stroke="currentColor" stroke-width="1.3"/>
+          <line x1="610" y1="190" x2="610" y2="230" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <rect x="480" y="234" width="260" height="56" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.3"/>
+          <text x="610" y="256" text-anchor="middle" class="tw-lbl" fill="var(--bad)">Too many: a coincidence crept in</text>
+          <text x="610" y="274" text-anchor="middle" class="tw-sub" fill="var(--bad)">tighten one lever (&#167;7), re-run</text>
+
+          <!-- loop back arrows -->
+          <path d="M 150 290 L 150 320 L 40 320 L 40 35 L 268 35" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#tw-arrow)"/>
+          <path d="M 610 290 L 610 320 L 720 320 L 720 35 L 494 35" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#tw-arrow)"/>
+
+          <!-- looks right: straight down -->
+          <line x1="380" y1="230" x2="380" y2="330" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <text x="398" y="290" class="tw-sub" fill="var(--good)">looks right</text>
+          <rect x="255" y="334" width="250" height="56" rx="8" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.3"/>
+          <text x="380" y="356" text-anchor="middle" class="tw-lbl" fill="var(--good)">Validate: seed a duplicate,</text>
+          <text x="380" y="374" text-anchor="middle" class="tw-lbl" fill="var(--good)">spot-check a few matches (&#167;9)</text>
+
+          <line x1="380" y1="390" x2="380" y2="414" stroke="currentColor" stroke-width="1.3" marker-end="url(#tw-arrow)"/>
+          <rect x="280" y="418" width="200" height="46" rx="8" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="380" y="446" text-anchor="middle" class="tw-lbl" fill="var(--accent-ink)" font-weight="700">Lock in the configuration</text>
+        </svg>
+        <figcaption><strong>Figure 1.</strong> One change per lap. Both failure branches feed back into the same "run" box, so the next inspection is judging exactly one new decision, not several at once.</figcaption>
+      </figure>
+    </section>
+
+    <section id="worked">
+      <h2><span class="num">6</span> Worked example: catching one, not two</h2>
+      <p>The file below defines two genuinely duplicated methods (<code class="inline">computeSubtotal</code> and <code class="inline">computeShippingCost</code> run the identical accumulation loop over different parameter names) and two unrelated one-line getters that happen to share the same shape by convention, not by copying:</p>
+      <pre class="code">public class Ledger {
+    private String name;
+    private String description;
+
+    public int computeSubtotal(int price, int qty) {
+        int total = 0;
+        for (int i = 0; i < qty; i++) {
+            total += price;
+        }
+        return total;
+    }
+
+    public int computeShippingCost(int rate, int units) {
+        int total = 0;
+        for (int i = 0; i < units; i++) {
+            total += rate;
+        }
+        return total;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public String getDescription() {
+        return this.description;
+    }
+}</pre>
+      <p>Six real runs against this file, moving one lever at a time, trace the full shape of the trade-off:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Threshold</th><th>Option</th><th>Found</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>6</code></td><td>none</td><td>0 matches</td><td>too strict: real duplicate missed</td></tr>
+            <tr><td>2</td><td><code>4</code></td><td>none</td><td>0 matches</td><td>still too strict</td></tr>
+            <tr><td>3</td><td><code>2</code></td><td><code>-ignoreIdentifiers</code></td><td>2 matches (5 + 2 lines)</td><td>too loose: getters false-positive</td></tr>
+            <tr><td>4</td><td><code>3</code></td><td><code>-ignoreIdentifiers</code></td><td>1 match (5 lines)</td><td>safe, but fragile</td></tr>
+            <tr><td>5</td><td><code>3</code></td><td><code>-ignoreVariableNames</code></td><td>1 match (4 lines)</td><td>safe, and robust</td></tr>
+            <tr><td>6</td><td><code>5</code></td><td><code>-ignoreVariableNames</code></td><td>0 matches</td><td>too strict again</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Run 1 and 2 are section 5's step 1: nothing found, and the source is known to contain a duplicate, so the verdict is "too few." Run 3 loosens both levers at once (low threshold, the broadest identifier option) and finds the real duplicate, but also the two getters, once <code class="inline">-ignoreIdentifiers</code> blanks <em>every</em> non-keyword identifier including the method names <code class="inline">getName</code> and <code class="inline">getDescription</code> themselves, both getters canonicalize to <code class="inline">public String _ ( ) return this . _ ;</code> and collide. Run 4 shows threshold alone can rescue precision here, raising it from 2 to 3 drops the 2-line getter match while keeping the 5-line real one. Run 5 shows the more robust fix: <code class="inline">-ignoreVariableNames</code> only blanks identifiers classified <code class="inline">VARIABLE</code>, and a method name followed by <code class="inline">(</code> is classified <code class="inline">METHOD</code> (see the companion <code class="inline">TokenVisitor</code> report, section 5), so <code class="inline">getName</code> and <code class="inline">getDescription</code> are never touched and the getters simply do not match at any threshold. Run 6 closes the loop: push threshold to 5 with the correct option and the real duplicate, only 4 significant lines long, disappears again.</p>
+
+      <figure>
+        <svg viewBox="0 0 760 380" role="img" aria-label="Grid plot of the six runs against Ledger.java, threshold on the horizontal axis (2 to 5), normalization aggressiveness on the vertical axis (none, targeted, blunt). Runs 1 and 2 with no options sit in a too-strict zone at zero matches. Run 3, blunt option at threshold 2, sits in a too-loose zone with a false positive. Runs 4 and 5, at threshold 3, sit in a safe zone finding only the true positive. Run 6, targeted option at threshold 5, is too strict again.">
+          <style>
+            .qg-lbl{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:11px; }
+            .qg-cap{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:10px; }
+          </style>
+          <!-- axes -->
+          <text x="380" y="20" text-anchor="middle" class="qg-lbl" fill="var(--muted)">threshold (looser &#8592;&#8594; stricter)</text>
+          <text x="24" y="200" text-anchor="middle" class="qg-lbl" fill="var(--muted)" transform="rotate(-90 24 200)">normalization (none &#8594; targeted &#8594; blunt)</text>
+
+          <!-- column x for threshold 2..5 -->
+          <!-- x: 2->170, 3->300, 4->430, 5->560 -->
+          <text x="170" y="46" text-anchor="middle" class="qg-cap" fill="var(--ink-2)">2</text>
+          <text x="300" y="46" text-anchor="middle" class="qg-cap" fill="var(--ink-2)">3</text>
+          <text x="430" y="46" text-anchor="middle" class="qg-cap" fill="var(--ink-2)">4</text>
+          <text x="560" y="46" text-anchor="middle" class="qg-cap" fill="var(--ink-2)">5</text>
+
+          <!-- row y for none/targeted/blunt -->
+          <text x="130" y="90" text-anchor="end" class="qg-cap" fill="var(--ink-2)">none</text>
+          <text x="130" y="200" text-anchor="end" class="qg-cap" fill="var(--ink-2)">targeted</text>
+          <text x="130" y="310" text-anchor="end" class="qg-cap" fill="var(--ink-2)">blunt</text>
+
+          <!-- gridlines -->
+          <line x1="150" y1="60" x2="620" y2="60" stroke="currentColor" stroke-opacity="0.15"/>
+          <line x1="150" y1="170" x2="620" y2="170" stroke="currentColor" stroke-opacity="0.15"/>
+          <line x1="150" y1="280" x2="620" y2="280" stroke="currentColor" stroke-opacity="0.15"/>
+          <line x1="150" y1="60" x2="150" y2="340" stroke="currentColor" stroke-opacity="0.15"/>
+
+          <!-- safe zone highlight around threshold=3 column, targeted+blunt rows -->
+          <rect x="255" y="150" width="90" height="180" rx="8" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="300" y="345" text-anchor="middle" class="qg-cap" fill="var(--good)">safe corridor</text>
+
+          <!-- points -->
+          <!-- run1: t=4(430), none(90) too strict; run2: t untested at row none for 2,3,5 -->
+          <circle cx="430" cy="90" r="7" fill="var(--muted)"/>
+          <text x="430" y="115" text-anchor="middle" class="qg-cap" fill="var(--muted)">1&#8211;2: 0 found</text>
+
+          <circle cx="170" cy="310" r="7" fill="var(--bad)"/>
+          <text x="170" y="335" text-anchor="middle" class="qg-cap" fill="var(--bad)">3: TP + FP</text>
+
+          <circle cx="300" cy="310" r="7" fill="var(--good)"/>
+          <text x="300" y="292" text-anchor="middle" class="qg-cap" fill="var(--good)">4: TP only</text>
+
+          <circle cx="300" cy="200" r="7" fill="var(--good)"/>
+          <text x="300" y="182" text-anchor="middle" class="qg-cap" fill="var(--good)">5: TP only</text>
+
+          <circle cx="560" cy="200" r="7" fill="var(--muted)"/>
+          <text x="560" y="225" text-anchor="middle" class="qg-cap" fill="var(--muted)">6: 0 found</text>
+        </svg>
+        <figcaption><strong>Figure 2.</strong> The six runs from the table above, plotted on both axes at once. Gray points found nothing (too strict); the red point found the real duplicate plus a coincidence (too loose); the two green points, one blunt-but-threshold-corrected and one targeted, land in the safe corridor.</figcaption>
+      </figure>
+    </section>
+
+    <section id="narrow">
+      <h2><span class="num">7</span> Prefer narrow to blunt</h2>
+      <p>Run 4 and run 5 in the worked example reach the same correct answer by different means, and the difference matters beyond this one file. <code class="inline">-ignoreIdentifiers</code> is the broadest identifier-side option: it erases every non-keyword identifier, method names included. <code class="inline">-ignoreVariableNames</code> is narrower: it only erases identifiers already classified <code class="inline">VARIABLE</code> by <code class="inline">RecogniseIdentifiersTokenVisitor</code>, leaving method names, type names, and constants untouched. The broad option worked in run 4 only because the threshold happened to be raised enough to compensate; the narrow option in run 5 was safe by construction, because it never had the power to make two differently-named methods collide in the first place.</p>
+      <p>As a general rule: reach for the option that erases exactly the cosmetic difference you can point to in the source (a renamed variable, a changed type annotation, a different string literal), and reach for the broad, all-erasing options (<code class="inline">-ignoreIdentifiers</code>, <code class="inline">-ignoreLiterals</code>) only when the narrower ones genuinely do not cover the case. The broad options are not wrong to use, they are simply harder to reason about, since they collapse more distinctions than most single duplicate has actually changed, which is exactly what widens the door to coincidental matches like the getters above.</p>
+    </section>
+
+    <section id="diagnostic">
+      <h2><span class="num">8</span> Diagnostic table</h2>
+      <p>What to reach for, keyed to what a first pass actually shows:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Symptom</th><th>Likely cause</th><th>Try</th></tr></thead>
+          <tbody>
+            <tr><td>Known duplicate not reported at all</td><td>Threshold longer than the duplicated block</td><td>Lower <code>-threshold</code> in small steps</td></tr>
+            <tr><td>Known duplicate not reported, same length as similar reported blocks</td><td>A cosmetic difference (name, type, literal) the current options do not erase</td><td>Add the single narrowest matching option (section 7)</td></tr>
+            <tr><td>Two unrelated short methods match (getters, simple delegators)</td><td>An identifier option broad enough to erase the one thing that made them different</td><td>Narrow the option, or raise <code>-threshold</code> past their length</td></tr>
+            <tr><td>Matches span two unrelated functions in one file</td><td>Threshold, or the language's lack of block-boundary awareness (see the algorithm report, section 9)</td><td>Usually not fixable by tuning; inspect with <code>-reportDuplicateText</code> and judge case by case</td></tr>
+            <tr><td>Duplicate count balloons after enabling one option</td><td>That option just erased a distinction that was carrying real information (often case, or a type)</td><td>Re-run without it to confirm, then decide if the collapsed distinction actually matters for this codebase</td></tr>
+            <tr><td>Everything matches everything in generated or vendored files</td><td>Step zero was skipped</td><td>Exclude the directory; do not tune options to compensate</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="validate">
+      <h2><span class="num">9</span> Validating without ground truth</h2>
+      <p>Most real codebases do not come with a labeled list of "these blocks are duplicates, these are not," so validating a configuration means manufacturing a small amount of ground truth on purpose:</p>
+      <ul>
+        <li><strong>Seed a known duplicate.</strong> Copy a real block you know should be flagged (or use one already fixed by a past refactor, reverted locally) and confirm the candidate configuration still reports it. This is a regression test for the configuration itself, and it is worth keeping alongside the configuration for the next time thresholds change.</li>
+        <li><strong>Spot-check a sample of real matches.</strong> Read the actual text of five or ten reported blocks with <code class="inline">-reportDuplicateText</code>, not just the summary counts. A configuration that "finds 400 duplicate blocks" says nothing about quality until a human has read a sample of them.</li>
+        <li><strong>Watch the count when you change one thing.</strong> A large jump in matches after enabling a single option is itself a signal, worth treating as "too many" in the workflow of section 5 until proven otherwise by reading the new matches.</li>
+        <li><strong>Re-validate after the codebase changes shape.</strong> A configuration tuned against today's mix of hand-written and generated code can start reporting differently once a new generated module, or a new boilerplate-heavy layer, is added. Section 3's advice is a function of the source, and the source moves.</li>
+      </ul>
+    </section>
+
+    <section id="bylanguage">
+      <h2><span class="num">10</span> Starting points by language</h2>
+      <p>Reasonable first-pass settings, drawing on the language-specific wiring documented in the two companion reports. These are starting points for step 1 of the workflow, not destinations.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Language</th><th>Start with</th><th>Watch for</th></tr></thead>
+          <tbody>
+            <tr><td>Java, C#, C++</td><td>defaults, then <code>-ignoreVariableNames</code> before <code>-ignoreIdentifiers</code></td><td>getter/setter/constructor boilerplate (section 6)</td></tr>
+            <tr><td>Go</td><td>defaults; add <code>-ignoreStrings</code> only if raw-string content varies incidentally</td><td>the <code>go</code> keyword is deliberately excluded from modifier-stripping (algorithm report, section 3)</td></tr>
+            <tr><td>TypeScript</td><td><code>-ignoreTypeAnnotations</code> early; it targets a cosmetic difference this language produces constantly</td><td>the ternary/tuple ambiguity noted in the <code class="inline">TokenVisitor</code> report, section 6</td></tr>
+            <tr><td>Python</td><td>defaults are usually closer to right than expected, since string-prefix and triple-quote handling already ship on</td><td>short, deeply nested helpers sitting near the threshold boundary</td></tr>
+            <tr><td>Any language, test directories</td><td>a separate, higher threshold than production code</td><td>table-driven tests are repetitive by design, not by accident</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="conclusion">
+      <h2><span class="num">11</span> Conclusion</h2>
+      <p>Tuning Simian well is not a single choice of numbers but a short, repeatable loop: run, read the actual matched text, change exactly one lever in the direction the evidence points, and re-run. Threshold and the <code class="inline">TokenVisitor</code> options are answering two different questions, how long a match must be and what counts as the same, and both have to be right together, as the worked example's safe corridor shows directly. The one habit that generalizes past any single codebase is the discipline of section 7: reach for the narrowest option that explains the difference you can actually see in the source, and only widen it when the narrow one demonstrably fails, because the broad options do not just catch more duplicates, they also stop distinguishing between duplication and convention.</p>
+    </section>
+
+    <section id="appendix">
+      <h2><span class="num">A</span> Appendix: reproducing the example</h2>
+      <p>All six runs in section 6 are real output from the jar built in this repository, against the exact <code class="inline">Ledger.java</code> shown there:</p>
+      <pre class="code"><span class="c">$</span> ./gradlew jar
+<span class="c">$</span> java -jar build/libs/simian-4.2.2.jar -threshold=6 Ledger.java
+Found 0 duplicate lines in 0 blocks in 0 files
+
+<span class="c">$</span> java -jar build/libs/simian-4.2.2.jar -threshold=2 -ignoreIdentifiers+ \
+    -reportDuplicateText+ Ledger.java
+Found 2 duplicate lines with fingerprint 75d10468... (the two getters)
+Found 5 duplicate lines with fingerprint 45f414bf... (the real duplicate)
+Found 14 duplicate lines in 4 blocks in 1 files
+
+<span class="c">$</span> java -jar build/libs/simian-4.2.2.jar -threshold=3 -ignoreVariableNames+ \
+    -reportDuplicateText+ Ledger.java
+Found 4 duplicate lines with fingerprint 630fbfa4... (the real duplicate only)
+Found 8 duplicate lines in 2 blocks in 1 files</span></pre>
+      <hr class="rule">
+      <h3>References: source locations</h3>
+      <div class="tbl-wrap refs">
+        <table>
+          <thead><tr><th>Concept</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td>Threshold and the sliding window</td><td><code>StreamLoader.java</code>, <code>Options.DEFAULT_THRESHOLD</code></td></tr>
+            <tr><td>Why <code>-ignoreVariableNames</code> spares method names</td><td><code>RecogniseIdentifiersTokenVisitor.java</code>, <code>IgnoreVariableNamesTokenVisitor.java</code></td></tr>
+            <tr><td><code>-ignoreIdentifiers</code>, the broad alternative</td><td><code>IgnoreIdentifiersTokenVisitor.java</code></td></tr>
+            <tr><td>File selection before tuning</td><td><code>IncludesFileFilter.java</code>, <code>ExcludesFileFilter.java</code>, <code>Option.IGNORE_BLOCKS</code></td></tr>
+            <tr><td>Full option catalog</td><td>companion report "Inside the TokenVisitor Chain", section 6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </article>
+</div>
+
+<footer class="page-footer">
+  Simian Similarity Analyzer &middot; Apache License 2.0 &middot; simian@quandarypeak.com
+</footer>

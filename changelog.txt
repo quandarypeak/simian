@@ -1,6 +1,32 @@
 Simian Changelog
 See the improvements we've made with each version release of Simian Similarity Analyzer.
 
+Version 4.2.2 - June 16th, 2026
+* New: Go (.go files) language support with dedicated GoParser and GoParserFactory
+* New: Go raw string literals (backtick strings) normalised before tokenisation via GoRawStringNormalisingReader
+* New: Go grouped import blocks (import ( ... )) suppressed before tokenisation to prevent false duplicate matches across files sharing common imports
+* New: Go keywords, built-in types, and built-in functions fully recognised
+* New: ignoreModifiers supports Go-specific modifiers: const, var, func, type, defer (goroutine keyword 'go' intentionally excluded — analogous to 'await' in TypeScript)
+* New: ignoreStrings suppresses Go raw string literal contents (backtick strings)
+* New: ignoreCharacters and ignoreCharacterCase supported for Go rune literals (e.g. 'a', '\n')
+* New: ignoreSubtypeNames and ignoreVariableNames supported for Go
+* New: added "go" as an accepted value for the -language and -defaultLanguage options
+* Fixed: Go raw string literals (backtick strings) containing backslashes or embedded double-quotes no longer corrupted - backslashes now round-trip as literal characters and embedded " is preserved instead of being lost
+* Enhanced TypeScript support: ignoreTypeAnnotations now suppresses tuple types including nested array elements (e.g. [string[], number])
+* Fixed: single-character uppercase identifiers (T, K, V) now correctly classified as TYPE instead of CONSTANT
+* Fixed: TypeScript await keyword no longer incorrectly treated as a modifier by ignoreModifiers
+* Fixed: TypeScript/JavaScript contextual keywords (get, set, from, of, is, as, declare, namespace, module, abstract, override, readonly, out, satisfies) used as ordinary method, property, or parameter names (e.g. cache.get(key), function set(obj, path)) are no longer misclassified as keyword declarations
+* Fixed: get/set and other contextual keywords used as object-literal property keys or function parameter names (e.g. { get: load }, function f(get, set)) are no longer incorrectly stripped by ignoreModifiers
+* Updated README to document Go language options and TypeScript improvements
+* Enhanced Python support: triple-quoted strings normalised before tokenisation to prevent line-sync errors
+* Enhanced Python support: string literal prefixes (f, b, r, u, rb, fr, etc.) stripped from fingerprints
+* Enhanced Python support: full keyword and built-in type recognition (including match/case soft keywords)
+* Enhanced Python support: import lines suppressed; async treated as a modifier
+* Fixed: underscore-only identifiers (_) incorrectly classified as CONSTANT instead of VARIABLE
+* Fixed: floor-division operator (//) no longer treated as a line comment in Python files
+* Added "python" as an accepted value for the -language option (alongside existing "py")
+* Updated README to document Python language options
+
 Version 4.2.1 - April 1st, 2026
 * Clean-up README
 * Clean-up build.gradle.kts

@@ -1,0 +1,683 @@
+<title>Simian 4.2.2 — Go, TypeScript &amp; Python</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:      #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --ink:     #0b0b0b;
+    --ink-2:   #52514e;
+    --muted:   #898781;
+    --hair:    #e1e0d9;
+    --border:  rgba(11,11,11,0.10);
+    --accent:      #c9591f;
+    --accent-ink:  #ffffff;
+    --accent-soft: #f4e2d3;
+    --before: #2a78d6;
+    --after:  #eb6834;
+    --good:   #006300;
+    --bad:    #b6342f;
+    --shadow: 0 1px 2px rgba(11,11,11,.05), 0 8px 24px rgba(11,11,11,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --bg:      #0d0d0d;
+      --surface: #17171a;
+      --surface-2: #1e1e1c;
+      --ink:     #ffffff;
+      --ink-2:   #c3c2b7;
+      --muted:   #8f8d86;
+      --hair:    #2c2c2a;
+      --border:  rgba(255,255,255,0.11);
+      --accent:      #e07a3e;
+      --accent-ink:  #241000;
+      --accent-soft: #3a2416;
+      --before: #3987e5;
+      --after:  #e07a3e;
+      --good:   #3fbf3f;
+      --bad:    #e0716d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:      #0d0d0d;
+    --surface: #17171a;
+    --surface-2: #1e1e1c;
+    --ink:     #ffffff;
+    --ink-2:   #c3c2b7;
+    --muted:   #8f8d86;
+    --hair:    #2c2c2a;
+    --border:  rgba(255,255,255,0.11);
+    --accent:      #e07a3e;
+    --accent-ink:  #241000;
+    --accent-soft: #3a2416;
+    --before: #3987e5;
+    --after:  #e07a3e;
+    --good:   #3fbf3f;
+    --bad:    #e0716d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.serif{
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    text-wrap:balance;
+    font-weight:600;
+  }
+  code, .mono, .term{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  ::selection{ background:var(--accent-soft); }
+
+  /* ---------- deck shell ---------- */
+  #deck{
+    height:100vh;
+    overflow-y:scroll;
+    scroll-snap-type:y mandatory;
+  }
+  .slide{
+    min-height:100vh;
+    width:100%;
+    scroll-snap-align:start;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:5.5vh 6vw;
+    position:relative;
+    border-bottom:1px solid var(--hair);
+  }
+  .slide-inner{ max-width:1180px; margin:0 auto; width:100%; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:.5em;
+    font-size:.72rem; letter-spacing:.10em; text-transform:uppercase;
+    color:var(--accent); font-weight:700; margin-bottom:1.1rem;
+  }
+  .eyebrow::before{
+    content:""; width:1.4em; height:1px; background:var(--accent); display:inline-block;
+  }
+  p{ color:var(--ink-2); line-height:1.6; }
+  .lede{ font-size:1.15rem; max-width:62ch; }
+
+  /* ---------- nav chrome ---------- */
+  #navdots{
+    position:fixed; right:1.6vw; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:9px; z-index:50;
+  }
+  #navdots button{
+    width:8px; height:8px; border-radius:50%; border:1px solid var(--border);
+    background:transparent; padding:0; cursor:pointer;
+  }
+  #navdots button.active{ background:var(--accent); border-color:var(--accent); }
+  #counter{
+    position:fixed; left:1.8vw; bottom:1.8vh; z-index:50;
+    font-family:ui-monospace,"SF Mono",monospace; font-size:.72rem; color:var(--muted);
+    letter-spacing:.04em;
+  }
+  #hint{
+    position:fixed; right:1.8vw; bottom:1.8vh; z-index:50;
+    font-size:.72rem; color:var(--muted); letter-spacing:.02em;
+  }
+  @media (max-width:720px){ #navdots{ display:none; } }
+
+  /* ---------- shared components ---------- */
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; }
+  .grid2{ display:grid; grid-template-columns:1.05fr 1fr; gap:2.4rem; align-items:start; }
+  @media (max-width:860px){ .grid3{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--surface); border:1px solid var(--hair); border-radius:10px;
+    padding:1.4rem 1.5rem; box-shadow:var(--shadow);
+  }
+  .card h3{ margin:0 0 .15rem; font-size:1.15rem; }
+  .card .tag{
+    font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+    font-weight:700; font-family:ui-monospace,monospace;
+  }
+  .card ul{ margin:.9rem 0 0; padding-left:1.05rem; color:var(--ink-2); font-size:.92rem; line-height:1.55; }
+  .card li{ margin-bottom:.4rem; }
+  .card li b{ color:var(--ink); font-weight:600; }
+
+  .pill{
+    display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.04em;
+    padding:.22em .7em; border-radius:99px; font-family:ui-monospace,monospace;
+  }
+  .pill.new{ background:var(--accent-soft); color:var(--accent); }
+  .pill.fix{ background:var(--surface-2); color:var(--ink-2); border:1px solid var(--hair); }
+
+  /* ---------- terminal window ---------- */
+  .term-window{
+    background:var(--surface); border:1px solid var(--hair); border-radius:10px;
+    overflow:hidden; box-shadow:var(--shadow);
+  }
+  .term-bar{
+    display:flex; align-items:center; gap:.4rem; padding:.55rem .8rem;
+    background:var(--surface-2); border-bottom:1px solid var(--hair);
+  }
+  .term-bar span{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .term-bar span:nth-child(1){ background:#e0605a; }
+  .term-bar span:nth-child(2){ background:#e0a83f; }
+  .term-bar span:nth-child(3){ background:#3fae5c; }
+  .term-bar .term-title{
+    margin-left:.5rem; font-size:.72rem; color:var(--muted); font-family:ui-monospace,monospace;
+  }
+  .term-body{
+    padding:.95rem 1.05rem; font-size:.78rem; line-height:1.62; white-space:pre-wrap;
+    word-break:break-word; color:var(--ink-2);
+  }
+  .term-body .prompt{ color:var(--muted); }
+  .term-body .cmd{ color:var(--ink); }
+  .term-body .found0{ color:var(--bad); font-weight:600; }
+  .term-body .foundN{ color:var(--good); font-weight:600; }
+  .term-body .hl{ background:var(--accent-soft); color:var(--ink); border-radius:3px; padding:0 2px; }
+  .term-body .dim{ color:var(--muted); }
+
+  /* ---------- code diff ---------- */
+  .diff{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:.76rem; line-height:1.65;
+    background:var(--surface); border:1px solid var(--hair); border-radius:10px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .diff .hd{ padding:.5rem .9rem; background:var(--surface-2); color:var(--muted); font-size:.68rem; border-bottom:1px solid var(--hair); }
+  .diff .ln{ padding:.05rem 1rem; white-space:pre; }
+  .diff .add{ background:color-mix(in srgb, var(--good) 12%, transparent); color:var(--ink); }
+  .diff .del{ background:color-mix(in srgb, var(--bad) 12%, transparent); color:var(--ink); }
+  .diff .add::before{ content:"+ "; color:var(--good); }
+  .diff .del::before{ content:"- "; color:var(--bad); }
+  .diff .ctx{ color:var(--ink-2); }
+  .diff .ctx::before{ content:"  "; }
+  .diff .comment{ color:var(--muted); font-style:italic; }
+
+  /* ---------- flow diagram (mermaid) ---------- */
+  .diagram-card{
+    background:var(--surface); border:1px solid var(--hair); border-radius:10px;
+    padding:1.2rem; box-shadow:var(--shadow); overflow-x:auto;
+  }
+  .diagram-card pre.mermaid{ margin:0; }
+
+  /* ---------- bar chart ---------- */
+  .chart-wrap{ background:var(--surface); border:1px solid var(--hair); border-radius:10px; padding:1.4rem 1.6rem 1.1rem; box-shadow:var(--shadow); }
+  .bars{ display:flex; justify-content:space-around; align-items:flex-end; height:210px; padding:0 1rem; }
+  .barcol{ display:flex; flex-direction:column; align-items:center; gap:.5rem; width:120px; }
+  .barpair{ display:flex; align-items:flex-end; gap:8px; height:170px; }
+  .bar{ width:30px; border-radius:4px 4px 2px 2px; position:relative; }
+  .bar .val{ position:absolute; top:-1.35rem; left:50%; transform:translateX(-50%); font-size:.72rem; font-family:ui-monospace,monospace; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .barcol .lbl{ font-size:.82rem; font-weight:600; color:var(--ink); }
+  .legend{ display:flex; gap:1.6rem; justify-content:center; margin-top:.8rem; font-size:.78rem; color:var(--ink-2); }
+  .legend .sw{ width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:.4rem; vertical-align:-1px; }
+
+  table.opt{ width:100%; border-collapse:collapse; font-size:.85rem; }
+  table.opt th{ text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:.5rem .7rem; border-bottom:1px solid var(--hair); }
+  table.opt td{ padding:.55rem .7rem; border-bottom:1px solid var(--hair); color:var(--ink-2); vertical-align:top; }
+  table.opt td.lang{ color:var(--ink); font-weight:600; white-space:nowrap; }
+  table.opt code{ background:var(--surface-2); border:1px solid var(--hair); padding:.05rem .35rem; border-radius:4px; font-size:.82rem; color:var(--ink); }
+
+  .kbd{ font-family:ui-monospace,monospace; background:var(--surface-2); border:1px solid var(--hair); border-radius:5px; padding:.1rem .4rem; font-size:.75rem; }
+
+  @media (prefers-reduced-motion:no-preference){
+    .slide{ scroll-margin-top:0; }
+  }
+</style>
+
+<div id="deck">
+
+  <!-- 0: TITLE -->
+  <section class="slide" id="s0">
+    <div class="slide-inner">
+      <div class="eyebrow">Simian Similarity Analyzer &middot; v4.2.2</div>
+      <h1 style="font-size:clamp(2.4rem,6vw,4.2rem); margin:0 0 .6rem; line-height:1.02;">
+        Three new languages.<br>Four quiet bugs, fixed.
+      </h1>
+      <p class="lede">
+        <code>feature/python-parser-and-typescript</code> brings duplicate-code detection to
+        <b style="color:var(--ink)">Go</b>, extends it for <b style="color:var(--ink)">TypeScript</b>
+        and <b style="color:var(--ink)">Python</b>, and closes classification bugs that were
+        letting real duplication hide in plain sight.
+      </p>
+      <div style="display:flex; gap:.6rem; margin-top:1.8rem; flex-wrap:wrap;">
+        <span class="pill new">+2,600 test lines</span>
+        <span class="pill new">3 new parsers</span>
+        <span class="pill fix">4 bug fixes</span>
+        <span class="pill fix">14 changelog entries</span>
+      </div>
+      <p style="margin-top:2.6rem; font-size:.78rem; color:var(--muted);">
+        Every example in this deck is real output — captured by actually building and running
+        <code>simian-4.2.2.jar</code>, not mocked up.
+      </p>
+    </div>
+  </section>
+
+  <!-- 1: OVERVIEW -->
+  <section class="slide" id="s1">
+    <div class="slide-inner">
+      <div class="eyebrow">What shipped</div>
+      <h2 style="font-size:2rem; margin:0 0 1.6rem;">One branch, three parsers</h2>
+      <div class="grid3">
+        <div class="card">
+          <div class="tag">New parser</div>
+          <h3>Go</h3>
+          <ul>
+            <li>Dedicated <b>GoParser</b> + <b>GoParserFactory</b></li>
+            <li>Raw string (backtick) literals normalised before tokenising</li>
+            <li>Grouped <code>import (...)</code> blocks suppressed</li>
+            <li>Keywords, built-ins &amp; <code>go</code>/<code>golang</code> extensions recognised</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="tag">Enhanced</div>
+          <h3>TypeScript</h3>
+          <ul>
+            <li>Tuple types fully suppressed, incl. nested arrays <code>[string[], number]</code></li>
+            <li><b>Fixed:</b> <code>await</code> no longer misread as a modifier</li>
+            <li><b>Fixed:</b> single-char generics <code>T</code>, <code>K</code>, <code>V</code> now classed TYPE</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="tag">Enhanced</div>
+          <h3>Python</h3>
+          <ul>
+            <li>Triple-quoted strings normalised — no more line-sync errors</li>
+            <li>String prefixes (<code>f</code>, <code>b</code>, <code>rb</code>&hellip;) stripped from fingerprints</li>
+            <li>Full keyword/builtin recognition incl. <code>match</code>/<code>case</code></li>
+            <li><b>Fixed:</b> floor-division <code>//</code> no longer read as a comment</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: TIMELINE GRAPH -->
+  <section class="slide" id="s2">
+    <div class="slide-inner">
+      <div class="eyebrow">How it was built</div>
+      <h2 style="font-size:2rem; margin:0 0 1.4rem;">Layered on, one language at a time</h2>
+      <p class="lede" style="margin-bottom:1.4rem;">
+        The branch's actual commit history &mdash; TypeScript landed first, Python followed,
+        Go arrived last on top of both.
+      </p>
+      <div class="diagram-card">
+<pre class="mermaid">
+graph LR
+  M["main"] --> A["56cd64e<br/>TypeScript support<br/>+ JUnit contribution"]
+  A --> B["78edb64<br/>merge main<br/>into typescript branch"]
+  B --> C["9c37cf3<br/>Python parser<br/>+ test fixtures"]
+  C --> D["ef99e43<br/>README +<br/>changelog update"]
+  D --> E["afeb35e<br/>merge typescript branch<br/>into python-parser"]
+  E --> F["f4885f9<br/>TypeScript refinements"]
+  F --> G["c080c1c<br/>Go support<br/>(current HEAD)"]
+  style G fill:#eb6834,stroke:#eb6834,color:#fff
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: ARCHITECTURE GRAPH -->
+  <section class="slide" id="s3">
+    <div class="slide-inner">
+      <div class="eyebrow">Under the hood</div>
+      <h2 style="font-size:2rem; margin:0 0 1.2rem;">Where the new code plugs in</h2>
+      <p class="lede" style="margin-bottom:1.4rem;">
+        Every language shares one pipeline. The new work adds a normalising <b>Reader</b> stage
+        per language (so multi-line literals never desync line numbers) and teaches the
+        <b>TokenVisitor</b> chain each language's keywords, modifiers and type grammar.
+      </p>
+      <div class="diagram-card">
+<pre class="mermaid">
+graph LR
+  SRC["Source file<br/>(.go / .ts / .py)"] --> RDR["Normalising Reader<br/>Go: raw strings &#40;GoRawStringNormalisingReader&#41;<br/>TS: template literals<br/>Py: triple-quoted strings"]
+  RDR --> TOK["Language Tokenizer<br/>GoParser / TypeScriptParser / PythonParser"]
+  TOK --> VIS["TokenVisitor chain<br/>Recognise identifiers &rarr; ignoreModifiers &rarr;<br/>ignoreTypeAnnotations &rarr; ignoreStrings &rarr; &hellip;"]
+  VIS --> FP["Line fingerprints"]
+  FP --> CMP["Cross-file comparison<br/>&ge; threshold consecutive matches"]
+  CMP --> OUT["Duplicate block report"]
+  style RDR fill:#f4e2d3,stroke:#c9591f,color:#0b0b0b
+  style VIS fill:#f4e2d3,stroke:#c9591f,color:#0b0b0b
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4: GO -->
+  <section class="slide" id="s4">
+    <div class="slide-inner">
+      <div class="eyebrow">Language spotlight &middot; Go</div>
+      <h2 style="font-size:1.9rem; margin:0 0 1.2rem;">Raw strings stop hiding duplicate logic</h2>
+      <div class="grid2">
+        <div>
+          <p class="lede">Two handlers built from the same template, differing only in a
+            backtick raw string and a parameter name:</p>
+          <div class="diff" style="margin-top:1rem;">
+            <div class="hd">greetings.go</div>
+            <div class="ln ctx">func GetUserGreeting(name string) string {</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;greeting := `Hello there,</div>
+            <div class="ln ctx">this is a welcome message` + name</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;return strings.ToUpper(greeting)</div>
+            <div class="ln ctx">}</div>
+          </div>
+          <p style="margin-top:1rem;">
+            By default Simian treats each raw string's contents as significant, and identifiers
+            like <code>name</code> vs <code>admin</code> as distinct — so it sees two different
+            functions. Turn on <code>-ignoreStrings</code> and <code>-ignoreVariableNames</code>
+            and the structural duplication surfaces.
+          </p>
+        </div>
+        <div>
+          <div class="term-window">
+            <div class="term-bar"><span></span><span></span><span></span><div class="term-title">zsh &mdash; simian</div></div>
+            <div class="term-body"><span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=3 greetings.go</span>
+&hellip;
+Found <span class="found0">0</span> duplicate lines in <span class="found0">0</span> blocks in 0 files
+
+<span class="dim">&mdash;&mdash;&mdash; enable the new Go-aware options &mdash;&mdash;&mdash;</span>
+
+<span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=3 \
+    -ignoreStrings+ -ignoreVariableNames+ \
+    -reportDuplicateText+ greetings.go</span>
+&hellip;
+Found 3 duplicate lines with fingerprint 9e621d5f&hellip;
+ Between lines 17 and 19 in greetings.go
+ Between lines 11 and 13 in greetings.go
+<span class="hl">    greeting := `Hello there,
+this is a welcome message` + name
+    return strings.ToUpper(greeting)</span>
+=====================================================================
+Found <span class="foundN">6</span> duplicate lines in <span class="foundN">2</span> blocks in 1 files</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5: TYPESCRIPT -->
+  <section class="slide" id="s5">
+    <div class="slide-inner">
+      <div class="eyebrow">Language spotlight &middot; TypeScript</div>
+      <h2 style="font-size:1.9rem; margin:0 0 1.2rem;">Type annotations no longer break a match</h2>
+      <div class="grid2">
+        <div>
+          <p class="lede">Same arithmetic, different types on every line &mdash; including a
+            tuple return type with a nested array element:</p>
+          <div class="diff" style="margin-top:1rem;">
+            <div class="hd">billing.ts</div>
+            <div class="ln ctx">function calculateOrderTotal(price: number, quantity: number)</div>
+            <div class="ln ctx">&nbsp;&nbsp;: [number, string] {</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;const tax: number = price * 0.08;</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;const total: number = (price + tax) * quantity;</div>
+          </div>
+          <p style="margin-top:1rem;">
+            With <code>-ignoreTypeAnnotations</code> and <code>-ignoreVariableNames</code>,
+            the tuple-type fix (<code>[string[], number]</code>-style nested arrays) lets Simian
+            see through every type difference down to the shared arithmetic shape.
+          </p>
+        </div>
+        <div>
+          <div class="term-window">
+            <div class="term-bar"><span></span><span></span><span></span><div class="term-title">zsh &mdash; simian</div></div>
+            <div class="term-body"><span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=3 billing.ts</span>
+&hellip;
+Found <span class="found0">0</span> duplicate lines in <span class="found0">0</span> blocks in 0 files
+
+<span class="dim">&mdash;&mdash;&mdash; ignore types, vars &amp; identifiers &mdash;&mdash;&mdash;</span>
+
+<span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=3 \
+    -ignoreTypeAnnotations+ -ignoreVariableNames+ \
+    -ignoreIdentifiers+ -reportDuplicateText+ billing.ts</span>
+&hellip;
+Found 3 duplicate lines with fingerprint 92921d87&hellip;
+ Between lines 7 and 9 in billing.ts
+ Between lines 1 and 3 in billing.ts
+<span class="hl">function calculateOrderTotal(price: number, quantity: number): [number, string] {
+    const tax: number = price * 0.08;
+    const total: number = (price + tax) * quantity;</span>
+=====================================================================
+Found <span class="foundN">6</span> duplicate lines in <span class="foundN">2</span> blocks in 1 files</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6: PYTHON -->
+  <section class="slide" id="s6">
+    <div class="slide-inner">
+      <div class="eyebrow">Language spotlight &middot; Python</div>
+      <h2 style="font-size:1.9rem; margin:0 0 1.2rem;">Triple-quotes and <code style="font-size:.75em;">//</code> stop lying to the parser</h2>
+      <div class="grid2">
+        <div>
+          <p class="lede">One query built with an f-string, the other with an <code>rb</code>-prefixed
+            raw byte string &mdash; plus a pair of floor-division helpers:</p>
+          <div class="diff" style="margin-top:1rem;">
+            <div class="hd">queries.py</div>
+            <div class="ln ctx">def fetch_user(uid: int) -> str:</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;query = f"""</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;SELECT * FROM users WHERE id = {uid}</div>
+            <div class="ln ctx">&nbsp;&nbsp;&nbsp;&nbsp;"""</div>
+          </div>
+          <p style="margin-top:1rem;">
+            Before this branch, a triple-quoted string spanning lines could desync line numbers
+            entirely. Now it's normalised first, the <code>f</code>/<code>rb</code> prefixes are
+            stripped, and <code>//</code> is correctly read as floor-division &mdash; not a comment.
+          </p>
+        </div>
+        <div>
+          <div class="term-window">
+            <div class="term-bar"><span></span><span></span><span></span><div class="term-title">zsh &mdash; simian</div></div>
+            <div class="term-body"><span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=2 queries.py</span>
+&hellip;
+Found <span class="found0">0</span> duplicate lines in <span class="found0">0</span> blocks in 0 files
+
+<span class="dim">&mdash;&mdash;&mdash; ignore strings, vars &amp; identifiers &mdash;&mdash;&mdash;</span>
+
+<span class="prompt">$</span> <span class="cmd">java -jar simian-4.2.2.jar -threshold=2 \
+    -ignoreStrings+ -ignoreVariableNames+ \
+    -ignoreIdentifiers+ -reportDuplicateText+ queries.py</span>
+&hellip;
+Found 2 duplicate lines &hellip; compute_page_count / compute_batch_count
+<span class="hl">def compute_page_count(total_items: int, page_size: int) -> int:
+    return total_items // page_size</span>
+=====================================================================
+Found 3 duplicate lines &hellip; fetch_order / fetch_user
+<span class="hl">def fetch_order(oid: int) -> str:
+    query = rb"""
+    SELECT * FROM orders
+    WHERE id = {oid}
+    """
+    return query</span>
+=====================================================================
+Found <span class="foundN">10</span> duplicate lines in <span class="foundN">4</span> blocks in 1 files</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7: BAR CHART -->
+  <section class="slide" id="s7">
+    <div class="slide-inner">
+      <div class="eyebrow">Across all three demos</div>
+      <h2 style="font-size:2rem; margin:0 0 .5rem;">Duplication was there all along &mdash; just unreadable</h2>
+      <p class="lede" style="margin-bottom:1.6rem;">
+        Same three snippets from this deck, default options vs. the new language-aware flags.
+        Nothing about the source changed between the two runs &mdash; only Simian's ability to see through it.
+      </p>
+      <div class="chart-wrap">
+        <div class="bars" role="img" aria-label="Duplicate lines detected: Go 0 before vs 6 after, TypeScript 0 before vs 6 after, Python 0 before vs 10 after">
+          <div class="barcol">
+            <div class="barpair">
+              <div class="bar" style="height:4px; background:var(--before);"><span class="val">0</span></div>
+              <div class="bar" style="height:84px; background:var(--after);"><span class="val">6</span></div>
+            </div>
+            <div class="lbl">Go</div>
+          </div>
+          <div class="barcol">
+            <div class="barpair">
+              <div class="bar" style="height:4px; background:var(--before);"><span class="val">0</span></div>
+              <div class="bar" style="height:84px; background:var(--after);"><span class="val">6</span></div>
+            </div>
+            <div class="lbl">TypeScript</div>
+          </div>
+          <div class="barcol">
+            <div class="barpair">
+              <div class="bar" style="height:4px; background:var(--before);"><span class="val">0</span></div>
+              <div class="bar" style="height:140px; background:var(--after);"><span class="val">10</span></div>
+            </div>
+            <div class="lbl">Python</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--before);"></span>Default options</span>
+          <span><span class="sw" style="background:var(--after);"></span>With new ignore options</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8: BUG FIXES -->
+  <section class="slide" id="s8">
+    <div class="slide-inner">
+      <div class="eyebrow">Fixed, not just new</div>
+      <h2 style="font-size:2rem; margin:0 0 1.4rem;">Four classification bugs closed</h2>
+      <div class="grid2">
+        <div>
+          <p style="margin:0 0 .6rem; font-size:.85rem; font-weight:600; color:var(--ink);">
+            Single-letter generics (<code>T</code>, <code>K</code>, <code>V</code>) were classed
+            CONSTANT, not TYPE &mdash; and underscore-only names (<code>_</code>) were classed
+            CONSTANT, not VARIABLE.
+          </p>
+          <div class="diff">
+            <div class="hd">RecogniseIdentifiersTokenVisitor.java</div>
+            <div class="ln del">if (Character.isLowerCase(name.charAt(i))) return false;</div>
+            <div class="ln del">return true;</div>
+            <div class="ln add">if (name.length() == 1) return false; // let it fall through to isTypeName</div>
+            <div class="ln add">if (Character.isUpperCase(c)) hasUpperCase = true;</div>
+            <div class="ln add">return hasUpperCase; // '_' has no uppercase &rarr; VARIABLE, not CONSTANT</div>
+          </div>
+        </div>
+        <div>
+          <p style="margin:0 0 .6rem; font-size:.85rem; font-weight:600; color:var(--ink);">
+            Python's tokenizer read <code>//</code> as the start of a line comment, silently
+            deleting everything after a floor-division on the same line.
+          </p>
+          <div class="diff">
+            <div class="hd">PythonParser.java</div>
+            <div class="ln add">tokenizer.slashSlashComments(false);</div>
+            <div class="ln add">tokenizer.ordinaryChar('/'); // '//' is floor-division, not a comment</div>
+          </div>
+          <p style="margin-top:1.4rem; font-size:.85rem; font-weight:600; color:var(--ink);">
+            TypeScript's <code>await</code> was being stripped as a modifier &mdash; making
+            awaited and non-awaited calls fingerprint identically.
+          </p>
+          <div class="diff">
+            <div class="hd">TypeScriptParserFactory.java</div>
+            <div class="ln comment">// 'await' is intentionally absent from MODIFIERS &mdash; it's an</div>
+            <div class="ln comment">// expression operator, stripping it loses real behaviour.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9: OPTIONS MATRIX -->
+  <section class="slide" id="s9">
+    <div class="slide-inner">
+      <div class="eyebrow">Quick reference</div>
+      <h2 style="font-size:2rem; margin:0 0 1.3rem;">What's new in the CLI</h2>
+      <div class="chart-wrap" style="overflow-x:auto;">
+        <table class="opt">
+          <thead><tr><th>Language</th><th>Turn it on with</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td class="lang">Go</td><td><code>-language=go</code> or <code>.go</code> ext</td><td>New dedicated parser; recognises Go keywords, built-ins, raw strings, rune literals</td></tr>
+            <tr><td class="lang">Go</td><td><code>-ignoreModifiers+</code></td><td>Suppresses <code>const</code>, <code>var</code>, <code>func</code>, <code>type</code>, <code>defer</code> (<code>go</code> excluded, like TS's <code>await</code>)</td></tr>
+            <tr><td class="lang">Go</td><td><code>-ignoreStrings+</code></td><td>Suppresses raw (backtick) string contents</td></tr>
+            <tr><td class="lang">TypeScript</td><td><code>-ignoreTypeAnnotations+</code></td><td>Now also suppresses tuple types, incl. nested array elements</td></tr>
+            <tr><td class="lang">Python</td><td><code>-language=python</code></td><td>Alias for <code>py</code>, now also accepted</td></tr>
+            <tr><td class="lang">Python</td><td><code>-ignoreStrings+</code></td><td>Now normalises triple-quotes and strips <code>f</code>/<code>b</code>/<code>r</code>/<code>rb</code> prefixes first</td></tr>
+            <tr><td class="lang">Python</td><td><code>-ignoreModifiers+</code></td><td>Suppresses <code>async</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10: CLOSING -->
+  <section class="slide" id="s10">
+    <div class="slide-inner">
+      <div class="eyebrow">Try it yourself</div>
+      <h2 style="font-size:2.1rem; margin:0 0 1.2rem;">Point it at a real codebase</h2>
+      <div class="term-window" style="max-width:640px;">
+        <div class="term-bar"><span></span><span></span><span></span><div class="term-title">zsh</div></div>
+        <div class="term-body"><span class="prompt">$</span> <span class="cmd">./gradlew jar</span>
+<span class="prompt">$</span> <span class="cmd">java -jar build/libs/simian-4.2.2.jar \
+    -threshold=6 -ignoreStrings+ -ignoreVariableNames+ \
+    "**/*.go" "**/*.ts" "**/*.py"</span></div>
+      </div>
+      <p class="lede" style="margin-top:1.6rem;">
+        Full option reference and changelog live in <code>README.md</code> and
+        <code>changelog.txt</code> on this branch (v4.2.2, June 16th 2026).
+      </p>
+      <p style="margin-top:2.4rem; font-size:.78rem; color:var(--muted);">
+        simian@quandarypeak.com &middot; Apache License 2.0
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<div id="navdots"></div>
+<div id="counter">01 / 11</div>
+<div id="hint">&uarr; &darr; or click dots to navigate</div>
+
+<script>
+  (function(){
+    var deck = document.getElementById('deck');
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var dots = document.getElementById('navdots');
+    var counter = document.getElementById('counter');
+
+    slides.forEach(function(s, i){
+      var b = document.createElement('button');
+      b.setAttribute('aria-label', 'Go to slide ' + (i+1));
+      b.addEventListener('click', function(){ s.scrollIntoView({behavior:'smooth'}); });
+      dots.appendChild(b);
+    });
+    var dotEls = Array.prototype.slice.call(dots.children);
+
+    function pad(n){ return n < 10 ? '0' + n : '' + n; }
+
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){
+          var idx = slides.indexOf(e.target);
+          dotEls.forEach(function(d,i){ d.classList.toggle('active', i === idx); });
+          counter.textContent = pad(idx + 1) + ' / ' + pad(slides.length);
+        }
+      });
+    }, { root: deck, threshold: 0.6 });
+    slides.forEach(function(s){ io.observe(s); });
+
+    document.addEventListener('keydown', function(e){
+      var current = slides.findIndex(function(s){
+        var r = s.getBoundingClientRect();
+        return r.top > -10 && r.top < window.innerHeight * 0.5;
+      });
+      if (current === -1) current = 0;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown'){
+        e.preventDefault();
+        var next = slides[Math.min(current + 1, slides.length - 1)];
+        next.scrollIntoView({behavior:'smooth'});
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp'){
+        e.preventDefault();
+        var prev = slides[Math.max(current - 1, 0)];
+        prev.scrollIntoView({behavior:'smooth'});
+      }
+    });
+  })();
+</script>
