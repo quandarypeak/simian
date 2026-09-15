@@ -48,7 +48,7 @@ import static org.junit.Assert.assertTrue;
  * </ul>
  *
  */
-public class TypeScriptParserFactoryTest {
+public class TypeScriptParserTest {
 
     // -------------------------------------------------------------------------
     // Test infrastructure
