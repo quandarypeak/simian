@@ -11,12 +11,12 @@ import com.quandarypeak.simian.Parser;
 import java.io.FileReader;
 import java.io.File;
 
-public class TypeScriptParserFactoryTest {
+public class TypeScriptParserTest {
     @Test
     public void testParse() throws Exception {
         LineListener lineListener = new TestLineListener();
         Parser parser = new TypeScriptParserFactory().createParser(lineListener, new Options());
-        int ret = parser.parse(new FileReader(new File("test/mockups/test.ts")));
+        int ret = parser.parse(new FileReader(new File("test/data/typeScript/test.ts")));
         
         Assert.assertTrue("Asserting the parsing return value: " + ret, ret == 49);
     }
