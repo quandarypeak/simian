@@ -54,7 +54,7 @@ import static org.junit.Assert.assertTrue;
  *   <li>Short declaration {@code :=} tokenises as {@code :} then {@code =}; differs from {@code =}</li>
  * </ul>
  */
-public class GoParserFactoryTest {
+public class GoParserTest {
 
     // -------------------------------------------------------------------------
     // Test infrastructure
