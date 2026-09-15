@@ -118,7 +118,7 @@ public final class Language implements Comparable<Language> {
     /**
      * The Python language.
      */
-    public static final Language PYTHON = new Language("Python", new PythonParserFactory(), "py");
+    public static final Language PYTHON = new Language("Python", new PythonParserFactory(), "py", "python");
 
     /* The default language. */
     public static final Language DEFAULT = TEXT;
