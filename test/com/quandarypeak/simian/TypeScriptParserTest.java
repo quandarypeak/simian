@@ -298,9 +298,10 @@ public class TypeScriptParserTest {
 
     // -------------------------------------------------------------------------
     // 6. IGNORE_MODIFIERS
-    //    Strips words in the MODIFIERS set: abstract, class, const, enum, export,
-    //    extends, final, function, implements, interface, native, private, protected,
-    //    public, static, throws, transient, volatile, var, let, tuple, type.
+    //    Strips words in the MODIFIERS set: abstract, accessor, async, class, const,
+    //    declare, enum, export, extends, function, implements, interface, namespace,
+    //    module, override, private, protected, public, readonly, satisfies, static,
+    //    tuple, type, var, let.
     // -------------------------------------------------------------------------
 
     @Test

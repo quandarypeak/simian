@@ -26,9 +26,7 @@ public final class JavaScriptParserFactory extends AbstractCFamilyParserFactory 
      * These modifiers may be optionally ignored
      */
     private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
-        "abstract", "class", "const", "enum", "export", "extends", "final",
-        "function", "implements", "interface", "native", "private", "protected",
-        "public", "static", "throws", "transient", "volatile", "var", "let"));
+        "class", "const", "export", "extends", "function", "static", "var", "let"));
 
     /**
      * Any of these will cause the line on which it appears to be ignored
