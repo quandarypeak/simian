@@ -25,8 +25,10 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
 
     // TypeScript primitive and special types promoted to TYPE so that
     // IGNORE_SUBTYPE_NAMES and IGNORE_VARIABLE_NAMES work correctly on them.
-    // These are also added to KEYWORDS (via the static initialiser below) so that
-    // they survive IGNORE_IDENTIFIERS.
+    // Note: they do NOT survive IGNORE_IDENTIFIERS as a result - RecogniseIdentifiersTokenVisitor
+    // checks TYPES membership before KEYWORDS membership, so a TYPES entry is always classified
+    // TYPE, never KEYWORD, and IgnoreIdentifiersTokenVisitor only preserves KEYWORD-typed tokens.
+    // Under IGNORE_IDENTIFIERS these are erased to '_' the same as a user-defined type name.
     private static final Set<String> TYPES = new HashSet<>(Arrays.asList(
             "any", "bigint", "boolean", "never", "number", "object",
             "string", "symbol", "unknown", "void"
@@ -82,7 +84,9 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
     private static final Set<String> IMPORT_LINE_TRIGGERS = new HashSet<>(Arrays.asList("import"));
 
     static {
-        // Ensure TYPES entries survive IGNORE_IDENTIFIERS (which only preserves KEYWORD type).
+        // Note: this has no observable effect on IGNORE_IDENTIFIERS - see the comment on
+        // TYPES above. Kept for parity with PythonParserFactory/CParserFactory, which have
+        // the same pattern.
         KEYWORDS.addAll(TYPES);
     }
 
