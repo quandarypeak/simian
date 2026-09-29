@@ -111,6 +111,11 @@ final class RecogniseIdentifiersTokenVisitor extends DecoratorTokenVisitor {
     }
 
     private boolean isAllUpperCase(final String name) {
+        // A single character is never a multi-char constant name; exclude it here so that a
+        // lone uppercase letter (generic type parameter T, K, V, …) falls through to isTypeName.
+        if (name.length() == 1) {
+            return false;
+        }
         boolean hasUpperCase = false;
         for (int i = name.length() - 1; i >= 0; --i) {
             final char c = name.charAt(i);
@@ -127,6 +132,6 @@ final class RecogniseIdentifiersTokenVisitor extends DecoratorTokenVisitor {
     }
 
     private boolean isTypeName(final String name) {
-        return Character.isUpperCase(name.charAt(0)) && name.length() > 1;
+        return Character.isUpperCase(name.charAt(0));
     }
 }
