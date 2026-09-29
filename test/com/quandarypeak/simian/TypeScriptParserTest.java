@@ -301,7 +301,7 @@ public class TypeScriptParserTest {
     //    Strips words in the MODIFIERS set: abstract, accessor, async, class, const,
     //    declare, enum, export, extends, function, implements, interface, namespace,
     //    module, override, private, protected, public, readonly, satisfies, static,
-    //    tuple, type, var, let.
+    //    type, var, let.
     // -------------------------------------------------------------------------
 
     @Test
@@ -342,6 +342,112 @@ public class TypeScriptParserTest {
         final ParseResult rInterface = parse("interface Foo {\n", opts);
         final ParseResult rPlain     = parse("Foo {\n", bare());
         assertEquals(rPlain.get(0), rInterface.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsAbstractKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rAbstract = parse("abstract class Foo {\n", opts);
+        final ParseResult rPlain    = parse("class Foo {\n", opts);
+        assertEquals(rPlain.get(0), rAbstract.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsEnumKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rEnum  = parse("enum Color {\n", opts);
+        final ParseResult rPlain = parse("Color {\n", bare());
+        assertEquals(rPlain.get(0), rEnum.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsExportKeyword() throws IOException {
+        // 'export' does not suppress the line (see exportDoesNotSuppressLine); this test
+        // confirms it is separately stripped as a MODIFIER when the option is active.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rExport = parse("export const PI = 3;\n", opts);
+        final ParseResult rPlain  = parse("const PI = 3;\n", opts);
+        assertEquals(rPlain.get(0), rExport.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsExtendsKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rExtends = parse("class Foo extends Base {\n", opts);
+        final ParseResult rPlain   = parse("class Foo Base {\n", opts);
+        assertEquals(rPlain.get(0), rExtends.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsImplementsKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rImplements = parse("class Foo implements Bar {\n", opts);
+        final ParseResult rPlain      = parse("class Foo Bar {\n", opts);
+        assertEquals(rPlain.get(0), rImplements.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsNamespaceAndModuleKeywords() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rNamespace = parse("namespace Foo {\n", opts);
+        final ParseResult rModule    = parse("module Foo {\n", opts);
+        final ParseResult rPlain     = parse("Foo {\n", bare());
+        assertEquals(rPlain.get(0), rNamespace.get(0));
+        assertEquals(rPlain.get(0), rModule.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsOverrideKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rOverride = parse("override method() {\n", opts);
+        final ParseResult rPlain    = parse("method() {\n", opts);
+        assertEquals(rPlain.get(0), rOverride.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsSatisfiesKeyword() throws IOException {
+        // Only the 'satisfies' word itself is a MODIFIER - the type expression that follows
+        // it ('Foo') is an ordinary identifier and is not removed, so the plain comparison
+        // target keeps 'Foo' too.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rSatisfies = parse("x = obj satisfies Foo;\n", opts);
+        final ParseResult rPlain     = parse("x = obj Foo;\n", bare());
+        assertEquals(rPlain.get(0), rSatisfies.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsStaticKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rStatic = parse("static count() {\n", opts);
+        final ParseResult rPlain  = parse("count() {\n", opts);
+        assertEquals(rPlain.get(0), rStatic.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsVarKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rVar   = parse("var x = 5;\n", opts);
+        final ParseResult rConst = parse("const x = 5;\n", opts);
+        assertEquals(rConst.get(0), rVar.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsTypeKeywordInAliasDeclaration() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rType  = parse("type Foo = string;\n", opts);
+        final ParseResult rPlain = parse("Foo = string;\n", bare());
+        assertEquals(rPlain.get(0), rType.get(0));
     }
 
     // -------------------------------------------------------------------------
@@ -420,6 +526,18 @@ public class TypeScriptParserTest {
         assertEquals(rPlain.get(0), rOut.get(0));
     }
 
+    @Test
+    public void functionKeywordAloneIsStrippedByIgnoreModifiers() throws IOException {
+        // Isolates 'function' from 'async' (asyncFunctionMatchesPlainFunctionWithIgnoreModifiers
+        // strips both together, so it can't tell them apart). Comparing against a fingerprint
+        // built with no 'function' keyword at all confirms 'function' itself is stripped.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rFunction = parse("function fetch(): void {\n", opts);
+        final ParseResult rPlain    = parse("fetch(): void {\n", bare());
+        assertEquals(rPlain.get(0), rFunction.get(0));
+    }
+
     // -------------------------------------------------------------------------
     // 8. IGNORE_IDENTIFIERS
     //    RecogniseIdentifiersTokenVisitor now classifies TypeScript/JavaScript keywords
@@ -469,6 +587,110 @@ public class TypeScriptParserTest {
         final ParseResult rConst = parse("const x: number = 5;\n", opts);
         final ParseResult rLet   = parse("let x: number = 5;\n", opts);
         assertNotEquals(rConst.get(0), rLet.get(0));
+    }
+
+    @Test
+    public void asTypeAssertionKeywordSurvivesIgnoreIdentifiers() throws IOException {
+        // 'as' (type assertion, e.g. 'x as string') is KEYWORD and must survive
+        // IGNORE_IDENTIFIERS. It is one of the most common TypeScript-only keywords.
+        // (The TYPE-classified name that follows, e.g. 'string', is erased to '_' the same
+        // as any other type annotation - see ignoreIdentifiersNormalisesTypeAnnotationsNotDeclarationKeywords -
+        // so this only checks that 'as' itself is preserved, not the asserted type.)
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult r = parse("return value as string;\n", opts);
+        assertTrue(r.get(0).contains("as"));
+    }
+
+    @Test
+    public void declarationAndVisibilityKeywordsSurviveIgnoreIdentifiers() throws IOException {
+        // 'enum', 'namespace', 'module', 'abstract', 'implements', and 'override' are all
+        // KEYWORD - they survive IGNORE_IDENTIFIERS even though they are also MODIFIERS
+        // (a different option, IgnoreWordsTokenVisitor, governs stripping them).
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        assertTrue(parse("enum Color {\n", opts).get(0).startsWith("enum"));
+        assertTrue(parse("namespace Foo {\n", opts).get(0).startsWith("namespace"));
+        assertTrue(parse("module Foo {\n", opts).get(0).startsWith("module"));
+        assertTrue(parse("abstract class Foo {\n", opts).get(0).startsWith("abstract"));
+        assertTrue(parse("class Foo implements Bar {\n", opts).get(0).contains("implements"));
+        assertTrue(parse("override method() {\n", opts).get(0).startsWith("override"));
+    }
+
+    @Test
+    public void typeOperatorKeywordsSurviveIgnoreIdentifiers() throws IOException {
+        // 'asserts', 'global', 'infer', 'is', 'keyof', 'satisfies', 'unique', and 'type' are
+        // all KEYWORD - none are user-defined names, so IGNORE_IDENTIFIERS must not erase
+        // them. ('from' is omitted: it only appears on import/export lines, which
+        // IgnoreLinesTokenVisitor suppresses entirely regardless of this option.)
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        assertTrue(parse("function f(x: unknown): asserts x is string {\n", opts).get(0).contains("asserts"));
+        assertTrue(parse("declare global {\n", opts).get(0).contains("global"));
+        assertTrue(parse("type Elem<T> = T extends (infer U)[] ? U : never;\n", opts).get(0).contains("infer"));
+        assertTrue(parse("function f(x: unknown): x is string {\n", opts).get(0).contains("is"));
+        assertTrue(parse("type Keys = keyof Foo;\n", opts).get(0).contains("keyof"));
+        assertTrue(parse("const x = obj satisfies Foo;\n", opts).get(0).contains("satisfies"));
+        assertTrue(parse("type Id<T> = T & unique symbol;\n", opts).get(0).contains("unique"));
+        assertTrue(parse("type Foo = string;\n", opts).get(0).startsWith("type"));
+    }
+
+    @Test
+    public void remainingControlFlowKeywordsSurviveIgnoreIdentifiers() throws IOException {
+        // Covers the control-flow KEYWORDS not already exercised by
+        // ignoreIdentifiersPreservesControlFlowKeywords / ignoreIdentifiersMakesReturnStatementsMatch:
+        // break, case, catch, continue, debugger, default, delete, do, else, finally,
+        // instanceof, new, of, super, switch, this, throw, try, typeof, with, yield.
+        // Each snippet is written on a single source line so it produces exactly one
+        // fingerprint entry (ParseResult.get(0)), matching this file's existing convention.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+
+        final String tryFingerprint = parse(
+                "try { doSomething(); } catch (e) { handle(e); } finally { cleanup(); }\n", opts).get(0);
+        assertTrue(tryFingerprint.contains("try"));
+        assertTrue(tryFingerprint.contains("catch"));
+        assertTrue(tryFingerprint.contains("finally"));
+
+        final String switchFingerprint = parse(
+                "switch (x) { case 1: break; default: continue; }\n", opts).get(0);
+        assertTrue(switchFingerprint.contains("switch"));
+        assertTrue(switchFingerprint.contains("case"));
+        assertTrue(switchFingerprint.contains("break"));
+        assertTrue(switchFingerprint.contains("default"));
+        assertTrue(switchFingerprint.contains("continue"));
+
+        assertTrue(parse("for (const x of items) { doStuff(); }\n", opts).get(0).contains("of"));
+        assertTrue(parse("do { x(); } while (cond);\n", opts).get(0).contains("do"));
+        assertTrue(parse("if (x) { y(); } else { z(); }\n", opts).get(0).contains("else"));
+        assertTrue(parse("delete obj.prop;\n", opts).get(0).contains("delete"));
+
+        final String newFingerprint = parse("this.value = new Foo();\n", opts).get(0);
+        assertTrue(newFingerprint.contains("this"));
+        assertTrue(newFingerprint.contains("new"));
+
+        final String instanceofFingerprint = parse("if (x instanceof Foo) { throw x; }\n", opts).get(0);
+        assertTrue(instanceofFingerprint.contains("instanceof"));
+        assertTrue(instanceofFingerprint.contains("throw"));
+
+        assertTrue(parse("yield x;\n", opts).get(0).contains("yield"));
+        assertTrue(parse("debugger;\n", opts).get(0).contains("debugger"));
+        assertTrue(parse("with (obj) { x(); }\n", opts).get(0).contains("with"));
+        assertTrue(parse("typeof x;\n", opts).get(0).contains("typeof"));
+        assertTrue(parse("super();\n", opts).get(0).contains("super"));
+    }
+
+    @Test
+    public void literalKeywordsSurviveIgnoreIdentifiers() throws IOException {
+        // 'false', 'null', 'true', and 'undefined' are KEYWORD (literal keywords) - they
+        // must survive IGNORE_IDENTIFIERS unchanged, unlike a real identifier.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final String fingerprint = parse("const a = true, b = false, c = null, d = undefined;\n", opts).get(0);
+        assertTrue(fingerprint.contains("true"));
+        assertTrue(fingerprint.contains("false"));
+        assertTrue(fingerprint.contains("null"));
+        assertTrue(fingerprint.contains("undefined"));
     }
 
     // -------------------------------------------------------------------------
@@ -759,7 +981,93 @@ public class TypeScriptParserTest {
     }
 
     // -------------------------------------------------------------------------
-    // 12. Sample file
+    // 16. Remaining TYPES entries
+    //     'string'/'number'/'void'/'boolean' are already exercised above; this covers the
+    //     rest of the TYPES set: any, bigint, never, object, symbol, unknown.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void remainingBuiltInTypesProduceDifferentFingerprints() throws IOException {
+        final ParseResult rAny     = parse("let x: any = 0;\n", bare());
+        final ParseResult rBigint  = parse("let x: bigint = 0;\n", bare());
+        final ParseResult rNever   = parse("let x: never = 0;\n", bare());
+        final ParseResult rObject  = parse("let x: object = 0;\n", bare());
+        final ParseResult rSymbol  = parse("let x: symbol = 0;\n", bare());
+        final ParseResult rUnknown = parse("let x: unknown = 0;\n", bare());
+        assertNotEquals(rAny.get(0), rBigint.get(0));
+        assertNotEquals(rNever.get(0), rObject.get(0));
+        assertNotEquals(rSymbol.get(0), rUnknown.get(0));
+    }
+
+    @Test
+    public void remainingBuiltInTypesAreNormalisedByIgnoreIdentifiers() throws IOException {
+        // TYPE-classified identifiers are erased to '_' under IGNORE_IDENTIFIERS, the same
+        // as 'string'/'number' in ignoreIdentifiersNormalisesTypeAnnotationsNotDeclarationKeywords
+        // (only KEYWORD tokens survive that option - see RecogniseIdentifiersTokenVisitor /
+        // IgnoreIdentifiersTokenVisitor). Two declarations differing only in one of these
+        // built-in type annotations therefore produce the same fingerprint.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult rAny    = parse("let x: any = 0;\n", opts);
+        final ParseResult rBigint = parse("let x: bigint = 0;\n", opts);
+        final ParseResult rNever  = parse("let x: never = 0;\n", opts);
+        assertEquals(rAny.get(0), rBigint.get(0));
+        assertEquals(rAny.get(0), rNever.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 17. IGNORE_SUBTYPE_NAMES
+    //     IgnoreSubtypeNamesTokenVisitor reduces a TYPE-classified compound PascalCase
+    //     name to its last capitalised segment (e.g. 'StringBuilder' -> 'Builder').
+    //     It only acts on type == TYPE; VARIABLE-classified identifiers are untouched.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void ignoreSubtypeNamesReducesCompoundTypeNameToLastCapitalisedSegment() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_SUBTYPE_NAMES, Boolean.TRUE);
+        final ParseResult rCompound = parse("const x: StringBuilder = y;\n", opts);
+        final ParseResult rShort    = parse("const x: Builder = y;\n", bare());
+        assertEquals(rShort.get(0), rCompound.get(0));
+    }
+
+    @Test
+    public void ignoreSubtypeNamesDoesNotAffectVariableNames() throws IOException {
+        // 'stringBuilder' here is a lowercase identifier (VARIABLE), not a type annotation,
+        // so IgnoreSubtypeNamesTokenVisitor must leave it - and other variable names -
+        // untouched; two different variable names still produce different fingerprints.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_SUBTYPE_NAMES, Boolean.TRUE);
+        final ParseResult rA = parse("stringBuilder + 1\n", opts);
+        final ParseResult rB = parse("otherBuilder + 1\n", opts);
+        assertNotEquals(rA.get(0), rB.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 18. IGNORE_CURLY_BRACES
+    //     IgnoreCurlyBracesTokenVisitor drops '{' and '}' from the fingerprint entirely.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void ignoreCurlyBracesRemovesBracesFromFingerprint() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_CURLY_BRACES, Boolean.TRUE);
+        final ParseResult rBraces   = parse("if (x) { y(); }\n", opts);
+        final ParseResult rNoBraces = parse("if (x) y();\n", bare());
+        assertEquals(rNoBraces.get(0), rBraces.get(0));
+    }
+
+    @Test
+    public void curlyBracesAppearInFingerprintByDefault() throws IOException {
+        // Without IGNORE_CURLY_BRACES, braces are ordinary punctuation and differentiate
+        // a braced block from an equivalent unbraced statement.
+        final ParseResult rBraces   = parse("if (x) { y(); }\n", bare());
+        final ParseResult rNoBraces = parse("if (x) y();\n", bare());
+        assertNotEquals(rNoBraces.get(0), rBraces.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 19. Sample file
     // -------------------------------------------------------------------------
 
     @Test
