@@ -63,11 +63,11 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
     // and stripping it would make awaited and non-awaited calls fingerprint-identical.
     private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
             "abstract", "accessor", "async",
-            "class", "const", "declare", "enum", "export", "extends", "final",
-            "function", "implements", "interface", "native", "namespace", "module",
+            "class", "const", "declare", "enum", "export", "extends",
+            "function", "implements", "interface", "namespace", "module",
             "override", "private", "protected", "public",
-            "readonly", "satisfies", "static", "throws", "transient",
-            "tuple", "type", "var", "let", "volatile"
+            "readonly", "satisfies", "static",
+            "tuple", "type", "var", "let"
     ));
 
     // 'import' triggers line suppression for import statements.  'package' (present in
