@@ -49,8 +49,13 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
             "static", "var",
             // TypeScript-specific structural keywords
             "abstract", "as", "asserts", "declare", "from", "global",
-            "infer", "is", "keyof", "override", "readonly", "satisfies",
+            "infer", "is", "keyof", "out", "override", "readonly", "satisfies",
             "type", "unique",
+            // Accessor keywords (get/set are contextual - not classified as TYPE, KEYWORD,
+            // or CONSTANT by RecogniseIdentifiersTokenVisitor otherwise, so they fall into
+            // the pending variable/method name slot and get silently overwritten by the
+            // accessor name that immediately follows, e.g. 'get celsius' loses 'get')
+            "get", "set",
             // Literal keywords
             "false", "null", "true", "undefined"
     ));
@@ -64,9 +69,9 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
     private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
             "abstract", "accessor", "async",
             "class", "const", "declare", "enum", "export", "extends",
-            "function", "implements", "interface", "namespace", "module",
-            "override", "private", "protected", "public",
-            "readonly", "satisfies", "static",
+            "function", "get", "implements", "interface", "namespace", "module",
+            "out", "override", "private", "protected", "public",
+            "readonly", "satisfies", "set", "static",
             "tuple", "type", "var", "let"
     ));
 
