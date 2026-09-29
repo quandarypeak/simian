@@ -22,8 +22,10 @@ import java.io.Reader;
 import java.io.StringReader;
 
 /**
- * Pre-processes TypeScript source to convert backtick template literals into double-quoted
- * string equivalents before the StreamTokenizer runs.
+ * Pre-processes JavaScript/TypeScript source to convert backtick template literals into
+ * double-quoted string equivalents before the StreamTokenizer runs. Template literals are
+ * a JavaScript (ES6) feature; TypeScript inherits the same syntax unchanged, so this reader
+ * applies equally to both languages.
  *
  * <p>StreamTokenizer does not recognise the backtick as a string delimiter, so without this
  * reader a template literal like {@code `Hello, ${name}!`} is tokenised as a series of
@@ -50,11 +52,11 @@ import java.io.StringReader;
  * normalised identically to ordinary template literals. The tag identifier appears in the
  * fingerprint as a normal identifier immediately before the now-string token.
  */
-final class TypeScriptTemplateLiteralNormalisingReader extends Reader {
+final class JavaScriptTemplateLiteralNormalisingReader extends Reader {
 
     private final StringReader _normalised;
 
-    TypeScriptTemplateLiteralNormalisingReader(final Reader source) throws IOException {
+    JavaScriptTemplateLiteralNormalisingReader(final Reader source) throws IOException {
         _normalised = new StringReader(normalise(source));
     }
 

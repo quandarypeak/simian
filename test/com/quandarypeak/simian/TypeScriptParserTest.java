@@ -34,9 +34,9 @@ import static org.junit.Assert.assertTrue;
 /**
  * Tests for TypeScriptParserFactory: fingerprint quality, option behaviours, and known limitations.
  *
- * <p><b>Parser internals:</b> TypeScript uses TypeScriptParser (backed by the same C-family
- * StreamTokenizer as Java/C#/C++) with a pre-processing step via
- * TypeScriptTemplateLiteralNormalisingReader. Single-line (//) and block (/* *&#47;) comments
+ * <p><b>Parser internals:</b> TypeScript uses JavaScriptParser (shared with JavaScriptParserFactory,
+ * backed by the same C-family StreamTokenizer as Java/C#/C++) with a pre-processing step via
+ * JavaScriptTemplateLiteralNormalisingReader. Single-line (//) and block (/* *&#47;) comments
  * are stripped; semicolons are whitespace; '#' and '$' are word characters; '.' and '/' are
  * ordinary punctuation. RecogniseIdentifiersTokenVisitor promotes keywords to type=KEYWORD
  * and built-in types to type=TYPE. Import lines are unconditionally suppressed by
@@ -241,7 +241,7 @@ public class TypeScriptParserTest {
 
     // -------------------------------------------------------------------------
     // 5. Template literals
-    //    TypeScriptTemplateLiteralNormalisingReader converts backtick template literals
+    //    JavaScriptTemplateLiteralNormalisingReader converts backtick template literals
     //    to double-quoted strings before the StreamTokenizer runs.
     //    Static text is preserved; ${...} interpolation expressions are replaced with a
     //    single space, so the expression body does not appear as code tokens.
