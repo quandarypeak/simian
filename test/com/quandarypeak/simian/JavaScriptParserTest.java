@@ -245,6 +245,22 @@ public class JavaScriptParserTest {
         assertEquals(rConst.get(0), rVar.get(0));
     }
 
+    @Test
+    public void ignoreModifiersStripsGetSetAccessorKeywords() throws IOException {
+        // 'get'/'set' are plain JavaScript (ES5) accessor keywords, not TypeScript-specific -
+        // an accessor and a plain method of the same name must fingerprint identically.
+        // ('out', TypeScript's generic variance annotation, is intentionally NOT added here:
+        // JS has no generics, so 'out' has no syntactic role and could be a real parameter
+        // name - e.g. 'function process(out) {}' - that must not be stripped.)
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("get celsius() {\n", opts);
+        final ParseResult rSetter = parse("set celsius(v) {\n", opts);
+        final ParseResult rPlain  = parse("celsius() {\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+        assertNotEquals(rPlain.get(0), rSetter.get(0)); // setter still has the 'v' parameter
+    }
+
     // -------------------------------------------------------------------------
     // 6. BALANCE_PARENTHESES
     //    Reacts to punctuation, not identifier classification - works the same for JS as TS.
