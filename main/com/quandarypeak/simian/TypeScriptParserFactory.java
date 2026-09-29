@@ -72,7 +72,7 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
             "function", "get", "implements", "interface", "namespace", "module",
             "out", "override", "private", "protected", "public",
             "readonly", "satisfies", "set", "static",
-            "tuple", "type", "var", "let"
+            "type", "var", "let"
     ));
 
     // 'import' triggers line suppression for import statements.  'package' (present in
