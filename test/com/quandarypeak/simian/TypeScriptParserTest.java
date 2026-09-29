@@ -1119,6 +1119,6 @@ public class TypeScriptParserTest {
     @Test
     public void sampleFileParsesSuccessfully() throws IOException {
         final ParseResult r = parseResource("/data/typeScript/test.ts", bare());
-        assertEquals(49, r.rawLineCount);
+        assertEquals(97, r.rawLineCount);
     }
 }

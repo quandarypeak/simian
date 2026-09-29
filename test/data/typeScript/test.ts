@@ -47,3 +47,51 @@ async function asyncTypeScriptTest(): Promise<any> {
         console.error('Error:', error);
     }
 }
+
+// Test getter/setter accessors
+class Temperature {
+    private _celsius: number;
+
+    constructor(celsius: number) {
+        this._celsius = celsius;
+    }
+
+    get celsius(): number {
+        return this._celsius;
+    }
+
+    set celsius(value: number) {
+        this._celsius = value;
+    }
+
+    get fahrenheit(): number {
+        return this._celsius * 9 / 5 + 32;
+    }
+}
+
+// Test interfaces (TypeScript-only - no JavaScript equivalent)
+interface Shape {
+    readonly name: string;
+    area(): number;
+}
+
+// Test enums (TypeScript-only - no JavaScript equivalent)
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+// Test type aliases and generics (TypeScript-only - no JavaScript equivalent)
+type Pair<T> = [T, T];
+
+function firstOf<T>(pair: Pair<T>): T {
+    return pair[0];
+}
+
+// Test destructuring and spread
+const { key: destructuredKeyTypeScript } = objectTypeScript;
+const combinedArrayTypeScript: number[] = [...arrayTypeScript, 4, 5];
+
+// Test template literals with multiple interpolations
+const summaryTypeScript: string = `${testTypeScriptFunction(1, 2)} and ${destructuredKeyTypeScript}`;
