@@ -450,6 +450,16 @@ public class TypeScriptParserTest {
         assertEquals(rPlain.get(0), rType.get(0));
     }
 
+    @Test
+    public void ignoreModifiersStripsAccessorKeyword() throws IOException {
+        // 'accessor' is the TC39 auto-accessor class field modifier (e.g. 'accessor count = 0;').
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rAccessor = parse("accessor count = 0;\n", opts);
+        final ParseResult rPlain    = parse("count = 0;\n", bare());
+        assertEquals(rPlain.get(0), rAccessor.get(0));
+    }
+
     // -------------------------------------------------------------------------
     // 7. TypeScript-specific modifiers
     //    'async', 'readonly', and 'declare' are in MODIFIERS and are stripped when
@@ -691,6 +701,42 @@ public class TypeScriptParserTest {
         assertTrue(fingerprint.contains("false"));
         assertTrue(fingerprint.contains("null"));
         assertTrue(fingerprint.contains("undefined"));
+    }
+
+    @Test
+    public void inKeywordSurvivesIgnoreIdentifiers() throws IOException {
+        // 'in' (the 'in' operator, e.g. 'key in obj', and for-in loops) is KEYWORD and must
+        // survive IGNORE_IDENTIFIERS while the surrounding variable names are erased.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult rWithIn    = parse("if (key in obj) {\n", opts);
+        final ParseResult rWithoutIn = parse("if (key obj) {\n", opts);
+        assertNotEquals(rWithoutIn.get(0), rWithIn.get(0));
+    }
+
+    @Test
+    public void modifierKeywordsAlsoSurviveIgnoreIdentifiers() throws IOException {
+        // 'declare', 'export', 'extends', 'function', 'interface', 'static', 'var', 'out',
+        // 'readonly', 'get', 'set', 'async', and 'await' are all KEYWORD, and are already
+        // verified to be stripped by IGNORE_MODIFIERS elsewhere in this file. This confirms
+        // the separate, unrelated claim that they also survive IGNORE_IDENTIFIERS - a
+        // different option governed by a different visitor (IgnoreIdentifiersTokenVisitor,
+        // which checks classified type, vs IgnoreWordsTokenVisitor, which matches by name).
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        assertTrue(parse("declare const VERSION: string;\n", opts).get(0).contains("declare"));
+        assertTrue(parse("export const PI = 3;\n", opts).get(0).contains("export"));
+        assertTrue(parse("class Foo extends Base {\n", opts).get(0).contains("extends"));
+        assertTrue(parse("function fetch() {\n", opts).get(0).startsWith("function"));
+        assertTrue(parse("interface Foo {\n", opts).get(0).startsWith("interface"));
+        assertTrue(parse("static count() {\n", opts).get(0).startsWith("static"));
+        assertTrue(parse("var x = 5;\n", opts).get(0).startsWith("var"));
+        assertTrue(parse("interface Producer<out T> {\n", opts).get(0).contains("out"));
+        assertTrue(parse("readonly name: string;\n", opts).get(0).startsWith("readonly"));
+        assertTrue(parse("get celsius() {\n", opts).get(0).startsWith("get"));
+        assertTrue(parse("set celsius(v) {\n", opts).get(0).startsWith("set"));
+        assertTrue(parse("async function fetch() {\n", opts).get(0).contains("async"));
+        assertTrue(parse("return await fetch(url);\n", opts).get(0).contains("await"));
     }
 
     // -------------------------------------------------------------------------
