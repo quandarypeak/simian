@@ -396,6 +396,30 @@ public class TypeScriptParserTest {
         assertNotEquals(rAwait.get(0), rPlain.get(0));
     }
 
+    @Test
+    public void getSetAccessorKeywordsAreStrippedByIgnoreModifiers() throws IOException {
+        // 'get' and 'set' are now in MODIFIERS, so an accessor and a plain method of the
+        // same name produce identical fingerprints when IGNORE_MODIFIERS is active.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("get celsius() {\n", opts);
+        final ParseResult rSetter = parse("set celsius(v) {\n", opts);
+        final ParseResult rPlain  = parse("celsius() {\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+        assertNotEquals(rPlain.get(0), rSetter.get(0)); // setter still has the 'v' parameter
+    }
+
+    @Test
+    public void outVarianceAnnotationIsStrippedByIgnoreModifiers() throws IOException {
+        // 'out' is now in MODIFIERS, so a covariant type parameter and a plain one
+        // produce identical fingerprints when IGNORE_MODIFIERS is active.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rOut   = parse("interface Producer<out T> {\n", opts);
+        final ParseResult rPlain = parse("interface Producer<T> {\n", opts);
+        assertEquals(rPlain.get(0), rOut.get(0));
+    }
+
     // -------------------------------------------------------------------------
     // 8. IGNORE_IDENTIFIERS
     //    RecogniseIdentifiersTokenVisitor now classifies TypeScript/JavaScript keywords
@@ -462,6 +486,21 @@ public class TypeScriptParserTest {
         final ParseResult rA = parse("x + y\n", opts);
         final ParseResult rB = parse("alpha + beta\n", opts);
         assertEquals(rA.get(0), rB.get(0));
+    }
+
+    @Test
+    public void getSetAndOutAreKeywordsNotVariableNames() throws IOException {
+        // 'get', 'set', and 'out' are contextual keywords, not user-defined names.  Before
+        // being added to KEYWORDS they were classified as VARIABLE by
+        // RecogniseIdentifiersTokenVisitor (the catch-all branch), so IGNORE_VARIABLE_NAMES
+        // would have erased them the same way it erases a real variable name. As KEYWORD
+        // tokens they must now survive IGNORE_VARIABLE_NAMES untouched.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_VARIABLE_NAMES, Boolean.TRUE);
+        final ParseResult rGetter = parse("get celsius() {\n", opts);
+        final ParseResult rOut    = parse("interface Producer<out T> {\n", opts);
+        assertTrue(rGetter.get(0).startsWith("get "));
+        assertTrue(rOut.get(0).contains("out"));
     }
 
     // -------------------------------------------------------------------------
