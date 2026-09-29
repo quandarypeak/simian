@@ -23,24 +23,26 @@ import java.io.IOException;
 import java.io.Reader;
 
 /**
- * Parser for TypeScript (and JavaScript) source files.
+ * Parser for JavaScript and TypeScript source files.
  *
  * <p>Extends the standard C-family tokeniser with pre-processing via
- * {@link TypeScriptTemplateLiteralNormalisingReader}, which converts backtick
+ * {@link JavaScriptTemplateLiteralNormalisingReader}, which converts backtick
  * template literals to double-quoted strings before tokenisation. This ensures
  * that {@code IGNORE_STRINGS} suppresses template-literal values and that two
  * template literals differing only in their interpolated expressions produce the
- * same fingerprint.
+ * same fingerprint. Template literals are a JavaScript (ES6) feature that
+ * TypeScript inherits unchanged, so this parser is shared by both languages'
+ * factories.
  */
-final class TypeScriptParser extends AbstractStreamTokenizerParser {
-    TypeScriptParser(final TokenVisitor visitor) {
+final class JavaScriptParser extends AbstractStreamTokenizerParser {
+    JavaScriptParser(final TokenVisitor visitor) {
         super(visitor);
     }
 
     @Override
     public int parse(final Reader reader) throws IOException {
         final StreamTokenizer tokenizer =
-                new StreamTokenizer(new TypeScriptTemplateLiteralNormalisingReader(reader));
+                new StreamTokenizer(new JavaScriptTemplateLiteralNormalisingReader(reader));
 
         tokenizer.parseNumbers();
         tokenizer.wordChars('_', '_');

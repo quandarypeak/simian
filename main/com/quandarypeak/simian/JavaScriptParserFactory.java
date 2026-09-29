@@ -36,7 +36,7 @@ public final class JavaScriptParserFactory extends AbstractCFamilyParserFactory 
 
     @Override
     public Parser createParser(final LineListener listener, final Options options) {
-        return new CFamilyParser(createBaseLanguageTokenVisitor(
+        return new JavaScriptParser(createBaseLanguageTokenVisitor(
             listener, options, MODIFIERS, IGNORE_LINE_TRIGGERS));
     }
 }

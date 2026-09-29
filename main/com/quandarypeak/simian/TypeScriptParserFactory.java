@@ -88,6 +88,6 @@ public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory 
             visitor = new IgnoreTypeAnnotationsTokenVisitor(visitor);
         }
         visitor = new RecogniseIdentifiersTokenVisitor(visitor, TYPES, KEYWORDS);
-        return new TypeScriptParser(visitor);
+        return new JavaScriptParser(visitor);
     }
 }
