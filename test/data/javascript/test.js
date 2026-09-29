@@ -44,4 +44,30 @@ async function asyncTest() {
     } catch (error) {
         console.error('Error:', error);
     }
-} 
+}
+
+// Test getter/setter accessors
+class Temperature {
+    constructor(celsius) {
+        this._celsius = celsius;
+    }
+
+    get celsius() {
+        return this._celsius;
+    }
+
+    set celsius(value) {
+        this._celsius = value;
+    }
+
+    get fahrenheit() {
+        return this._celsius * 9 / 5 + 32;
+    }
+}
+
+// Test destructuring and spread
+const { key: destructuredKey } = object;
+const combinedArray = [...array, 4, 5];
+
+// Test template literals with multiple interpolations
+const summary = `${testFunction(1, 2)} and ${destructuredKey}`;

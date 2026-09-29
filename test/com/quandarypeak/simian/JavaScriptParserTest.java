@@ -346,6 +346,6 @@ public class JavaScriptParserTest {
         final LineListener lineListener = new TestLineListener();
         final Parser parser = new JavaScriptParserFactory().createParser(lineListener, new Options());
         final int ret = parser.parse(new FileReader(new File("test/data/javascript/test.js")));
-        assertEquals(47, ret);
+        assertEquals(73, ret);
     }
 }
