@@ -1211,7 +1211,98 @@ public class TypeScriptParserTest {
     }
 
     // -------------------------------------------------------------------------
-    // 21. Sample file
+    // 22. Contextual keyword vs ordinary identifier disambiguation
+    //     RecogniseAccessorKeywordTokenVisitor: a word in CONTEXTUAL_KEYWORDS is a genuine
+    //     keyword only when NOT immediately preceded by '.' AND immediately followed by
+    //     another identifier (not '(' directly). Otherwise it's an ordinary identifier -
+    //     reclassified METHOD (followed by '(') or VARIABLE (otherwise), so it fingerprints
+    //     identically to any other method/property name under IGNORE_IDENTIFIERS, and is
+    //     never destroyed under IGNORE_MODIFIERS.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void methodNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        // Regression test: previously 'class Foo { get() {...} }' lost the ONLY identifier
+        // that was the method's name entirely - this is worse than a genuine accessor
+        // (which correctly reduces to just the real name, e.g. 'get fahrenheit()' -> 'fahrenheit()').
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("class Foo { get() { return 1; } }\n", opts);
+        final ParseResult rSet = parse("class Foo { set(v) { this.v = v; } }\n", opts);
+        assertTrue(rGet.get(0).contains("get"));
+        assertTrue(rSet.get(0).contains("set"));
+    }
+
+    @Test
+    public void genuineAccessorDeclarationStillCorrectlyStrippedByIgnoreModifiers() throws IOException {
+        // Must keep working identically to before this fix.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("class Foo { get fahrenheit() { return 1; } }\n", opts);
+        final ParseResult rPlain  = parse("class Foo { fahrenheit() { return 1; } }\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+    }
+
+    @Test
+    public void callSiteContextualKeywordsAreNotStrippedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        for (final String word : new String[]{"get", "set", "from", "of", "is", "as",
+                "declare", "namespace", "module", "abstract", "override", "readonly", "out", "satisfies"}) {
+            final ParseResult r = parse("cache." + word + "(key);\n", opts);
+            assertTrue("'" + word + "' should not be stripped as a method name", r.get(0).contains(word));
+        }
+    }
+
+    @Test
+    public void callSiteContextualKeywordsMatchAnOrdinaryMethodUnderIgnoreIdentifiers() throws IOException {
+        // Regression test for the core inconsistency this fix addresses: a call like
+        // 'cache.get(key)' must fingerprint identically to 'cache.fetch(key)' under
+        // IGNORE_IDENTIFIERS - the method name is a user choice like any other and must be
+        // erased uniformly, regardless of whether it happens to collide with a keyword.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult rControl = parse("cache.fetch(key);\n", opts);
+        for (final String word : new String[]{"get", "set", "from", "of", "is", "as",
+                "declare", "namespace", "module", "abstract", "override", "readonly", "out", "satisfies"}) {
+            final ParseResult r = parse("cache." + word + "(key);\n", opts);
+            assertEquals("'" + word + "' call site should erase like any other method name", rControl.get(0), r.get(0));
+        }
+    }
+
+    @Test
+    public void genuineContextualKeywordUsagesStillSurviveIgnoreIdentifiers() throws IOException {
+        // Must keep working identically to before this fix - these are the real,
+        // already-tested-elsewhere usages; spot-checked together here as a regression guard
+        // for the new visitor specifically.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        assertTrue(parse("class Foo { get fahrenheit() {\n", opts).get(0).startsWith("class_{get"));
+        assertTrue(parse("return x as string;\n", opts).get(0).contains("as"));
+        assertTrue(parse("for (a of b) {\n", opts).get(0).contains("of"));
+        assertTrue(parse("function f(x): x is string {\n", opts).get(0).contains("is"));
+        assertTrue(parse("declare const VERSION: string;\n", opts).get(0).contains("declare"));
+        assertTrue(parse("namespace Foo {\n", opts).get(0).startsWith("namespace"));
+        assertTrue(parse("abstract class Foo {\n", opts).get(0).startsWith("abstract"));
+        assertTrue(parse("override method() {\n", opts).get(0).startsWith("override"));
+        assertTrue(parse("readonly name: string;\n", opts).get(0).startsWith("readonly"));
+        assertTrue(parse("interface Producer<out T> {\n", opts).get(0).contains("out"));
+        assertTrue(parse("const x = obj satisfies Foo;\n", opts).get(0).contains("satisfies"));
+    }
+
+    @Test
+    public void dotPrecededPropertyReferenceWithoutCallIsNotAKeyword() throws IOException {
+        // 'cache.get' (a property reference, no call) must not be treated as an accessor
+        // keyword either - it should erase under IGNORE_IDENTIFIERS like any other property.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult rGet   = parse("const g = cache.get;\n", opts);
+        final ParseResult rFetch = parse("const g = cache.fetch;\n", opts);
+        assertEquals(rFetch.get(0), rGet.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 23. Sample file
     // -------------------------------------------------------------------------
 
     @Test
