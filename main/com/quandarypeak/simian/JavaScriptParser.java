@@ -17,43 +17,34 @@
 
 package com.quandarypeak.simian;
 
-import com.quandarypeak.simian.java.io.StreamTokenizer;
-
 import java.io.IOException;
 import java.io.Reader;
 
 /**
  * Parser for JavaScript and TypeScript source files.
  *
- * <p>Extends the standard C-family tokeniser with pre-processing via
- * {@link JavaScriptTemplateLiteralNormalisingReader}, which converts backtick
- * template literals to double-quoted strings before tokenisation. This ensures
+ * <p>Delegates to the standard C-family tokeniser ({@link CFamilyParser}) with
+ * pre-processing via {@link JavaScriptTemplateLiteralNormalisingReader}, which converts
+ * backtick template literals to double-quoted strings before tokenisation. This ensures
  * that {@code IGNORE_STRINGS} suppresses template-literal values and that two
  * template literals differing only in their interpolated expressions produce the
  * same fingerprint. Template literals are a JavaScript (ES6) feature that
  * TypeScript inherits unchanged, so this parser is shared by both languages'
  * factories.
+ *
+ * <p>Delegating to {@link CFamilyParser} (rather than duplicating its tokeniser setup)
+ * means any future change to the shared C-family tokeniser configuration is picked up
+ * here automatically, with no risk of the two drifting out of sync.
  */
-final class JavaScriptParser extends AbstractStreamTokenizerParser {
+final class JavaScriptParser implements Parser {
+    private final Parser delegate;
+
     JavaScriptParser(final TokenVisitor visitor) {
-        super(visitor);
+        this.delegate = new CFamilyParser(visitor);
     }
 
     @Override
     public int parse(final Reader reader) throws IOException {
-        final StreamTokenizer tokenizer =
-                new StreamTokenizer(new JavaScriptTemplateLiteralNormalisingReader(reader));
-
-        tokenizer.parseNumbers();
-        tokenizer.wordChars('_', '_');
-        tokenizer.wordChars('#', '#');
-        tokenizer.wordChars('$', '$');
-        tokenizer.slashSlashComments(true);
-        tokenizer.slashStarComments(true);
-        tokenizer.whitespaceChars(';', ';');
-        tokenizer.ordinaryChar('.');
-        tokenizer.ordinaryChar('/');
-
-        return parse(tokenizer);
+        return delegate.parse(new JavaScriptTemplateLiteralNormalisingReader(reader));
     }
 }
