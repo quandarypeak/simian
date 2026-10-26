@@ -25,8 +25,17 @@ final class JavaScriptParserFactory extends AbstractCFamilyParserFactory {
     /**
      * These modifiers may be optionally ignored
      */
+    // 'get'/'set' are deliberately absent - RecogniseAccessorKeywordTokenVisitor now owns
+    // their stripping decision (IgnoreWordsTokenVisitor matches by name only, which would
+    // incorrectly strip an ordinary method literally named 'get'/'set' too).
     private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
-        "class", "const", "export", "extends", "function", "get", "set", "static", "var", "let"));
+        "class", "const", "export", "extends", "function", "static", "var", "let"));
+
+    // JavaScript has no identifier-classification step (no RecogniseIdentifiersTokenVisitor),
+    // so RecogniseAccessorKeywordTokenVisitor's trigger matches on the literal name alone,
+    // not on a prior KEYWORD classification - see its class doc.
+    private static final Set<String> CONTEXTUAL_KEYWORDS = new HashSet<>(Arrays.asList(
+        "get", "set"));
 
     /**
      * Any of these will cause the line on which it appears to be ignored
@@ -36,7 +45,8 @@ final class JavaScriptParserFactory extends AbstractCFamilyParserFactory {
 
     @Override
     public Parser createParser(final LineListener listener, final Options options) {
-        return new JavaScriptParser(createBaseLanguageTokenVisitor(
-            listener, options, MODIFIERS, IGNORE_LINE_TRIGGERS));
+        TokenVisitor visitor = createBaseLanguageTokenVisitor(listener, options, MODIFIERS, IGNORE_LINE_TRIGGERS);
+        visitor = new RecogniseAccessorKeywordTokenVisitor(visitor, CONTEXTUAL_KEYWORDS, options.hasOption(Option.IGNORE_MODIFIERS));
+        return new JavaScriptParser(visitor);
     }
 }

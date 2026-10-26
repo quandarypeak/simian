@@ -432,7 +432,46 @@ public class JavaScriptParserTest {
     }
 
     // -------------------------------------------------------------------------
-    // 11. Sample file
+    // 12. Contextual keyword vs ordinary identifier disambiguation (get/set)
+    //     RecogniseAccessorKeywordTokenVisitor: 'get'/'set' are genuine accessor-prefix
+    //     keywords only when not immediately preceded by '.' and immediately followed by
+    //     another identifier (not '(' directly). Otherwise they're ordinary identifiers.
+    //     JS has no identifier classification step, so this only affects IGNORE_MODIFIERS
+    //     here (bare rendering is always unaffected; IGNORE_IDENTIFIERS already erases
+    //     everything uniformly regardless, per the documented gap in section 9).
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void methodNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("class Foo { get() { return 1; } }\n", opts);
+        final ParseResult rSet = parse("class Foo { set(v) { this.v = v; } }\n", opts);
+        assertTrue(rGet.get(0).contains("get"));
+        assertTrue(rSet.get(0).contains("set"));
+    }
+
+    @Test
+    public void callSiteGetSetAreNotStrippedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("cache.get(key);\n", opts);
+        final ParseResult rSet = parse("cache.set(key, val);\n", opts);
+        assertTrue(rGet.get(0).contains("get"));
+        assertTrue(rSet.get(0).contains("set"));
+    }
+
+    @Test
+    public void genuineAccessorDeclarationStillCorrectlyStrippedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("class Foo { get fahrenheit() { return 1; } }\n", opts);
+        final ParseResult rPlain  = parse("class Foo { fahrenheit() { return 1; } }\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. Sample file
     // -------------------------------------------------------------------------
 
     @Test

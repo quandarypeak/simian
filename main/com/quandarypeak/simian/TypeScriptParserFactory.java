@@ -62,18 +62,44 @@ final class TypeScriptParserFactory extends AbstractCFamilyParserFactory {
             "false", "null", "true", "undefined"
     ));
 
+    // Contextual keywords: TypeScript-invented or JS-contextual words that are NOT reserved
+    // by the language grammar outside one specific syntactic position - they are ordinary,
+    // legal method/property names everywhere else (e.g. 'cache.get(key)', 'Array.from(arr)',
+    // 'Array.of(1, 2, 3)'). Unlike true reserved words (class, return, ...), unconditionally
+    // classifying these as KEYWORD is wrong when they're used as an ordinary identifier.
+    // RecogniseAccessorKeywordTokenVisitor disambiguates using a single rule: genuine keyword
+    // role only when NOT immediately preceded by '.' AND immediately followed by another
+    // identifier (not '(' directly) - see its class doc for worked examples.
+    // 'async' and 'accessor' are deliberately excluded: 'async () => {}' (async arrow
+    // functions) is genuine keyword usage immediately followed by '(' - the exact signature
+    // this visitor otherwise treats as "ordinary identifier being called/declared" - so the
+    // single followed-by-identifier-vs-'(' rule misclassifies it. 'accessor' isn't in
+    // KEYWORDS at all (only MODIFIERS), so it never reaches this visitor pre-classified the
+    // way the other words do; including it would need KEYWORDS membership too. Both need a
+    // more careful fix than this pass covers.
+    private static final Set<String> CONTEXTUAL_KEYWORDS = new HashSet<>(Arrays.asList(
+            "get", "set", "from", "of", "is", "as",
+            "declare", "namespace", "module", "abstract", "override", "readonly", "out", "satisfies"
+    ));
+
     // Words stripped when IGNORE_MODIFIERS is active.  Includes visibility modifiers,
     // declaration keywords, and TypeScript-specific qualifiers that are often stylistic
     // rather than structural — so that e.g. an async function and its sync counterpart,
     // or a public method and a private one, compare as identical when the option is set.
     // Note: 'await' is intentionally absent — it is an expression operator ('await fetch()')
     // and stripping it would make awaited and non-awaited calls fingerprint-identical.
+    // 'get'/'set'/'declare'/'namespace'/'module'/'abstract'/'override'/'readonly'/'out'/
+    // 'satisfies' are deliberately absent - RecogniseAccessorKeywordTokenVisitor now owns
+    // their stripping decision (IgnoreWordsTokenVisitor matches by name only, which would
+    // incorrectly strip an ordinary method/property literally sharing one of these names too,
+    // e.g. 'cache.get(key)', 'obj.satisfies(x)'). 'accessor'/'async' stay here unchanged -
+    // see the comment on CONTEXTUAL_KEYWORDS for why they're excluded from that mechanism.
     private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList(
-            "abstract", "accessor", "async",
-            "class", "const", "declare", "enum", "export", "extends",
-            "function", "get", "implements", "interface", "namespace", "module",
-            "out", "override", "private", "protected", "public",
-            "readonly", "satisfies", "set", "static",
+            "accessor", "async",
+            "class", "const", "enum", "export", "extends",
+            "function", "implements", "interface",
+            "private", "protected", "public",
+            "static",
             "type", "var", "let"
     ));
 
@@ -96,6 +122,7 @@ final class TypeScriptParserFactory extends AbstractCFamilyParserFactory {
         if (options.hasOption(Option.IGNORE_TYPE_ANNOTATIONS)) {
             visitor = new IgnoreTypeAnnotationsTokenVisitor(visitor);
         }
+        visitor = new RecogniseAccessorKeywordTokenVisitor(visitor, CONTEXTUAL_KEYWORDS, options.hasOption(Option.IGNORE_MODIFIERS));
         visitor = new RecogniseIdentifiersTokenVisitor(visitor, TYPES, KEYWORDS);
         return new JavaScriptParser(visitor);
     }
