@@ -135,13 +135,23 @@ final class JavaScriptTemplateLiteralNormalisingReader extends Reader {
                 // Escape sequence in the static text part.
                 final char next = src.charAt(i + 1);
                 if (next == '\n') {
+                    // Line continuation (an actual newline byte, not the two-char '\n'
+                    // sequence): removed entirely from the runtime string value.
                     newlines++;
                     out.append(' ');
-                } else if (next == '`' || next == '"') {
-                    // Escaped backtick or quote: emit a space (quote would close the synthetic string).
-                    out.append(' ');
-                } else if (next != '\r') {
-                    out.append(next);
+                } else if (next == '\r') {
+                    // Part of a CRLF line continuation; the paired '\n' on the next loop
+                    // iteration is what actually gets counted via the plain-newline branch below.
+                } else {
+                    // Every other escape - \\, the two-char \n, \t, \", \`, \$, etc. - passes
+                    // through to the synthetic string exactly as written, the same way
+                    // passString() preserves escapes in regular quoted strings elsewhere in
+                    // this file. The real StreamTokenizer then resolves it exactly once, not
+                    // twice: resolving it here too previously caused a literal backslash to be
+                    // misread as escaping the synthetic closing quote (silently corrupting the
+                    // rest of the line), and collapsed two-char escapes like \n to just their
+                    // letter, colliding with unrelated literal text containing that same letter.
+                    out.append(c).append(next);
                 }
                 i += 2;
             } else if (c == '$' && i + 1 < len && src.charAt(i + 1) == '{') {

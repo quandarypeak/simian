@@ -354,7 +354,72 @@ public class JavaScriptParserTest {
     }
 
     // -------------------------------------------------------------------------
-    // 10. Sample file
+    // 10. Escape sequences
+    //     Regular "..."/'...' strings are unescaped directly by StreamTokenizer: \\ -> one
+    //     backslash, \n -> a real newline, \" -> a literal quote, etc.
+    //     Template literals go through JavaScriptTemplateLiteralNormalisingReader first,
+    //     which converts backticks to a synthetic double-quoted string; escape sequences in
+    //     the static text are passed through verbatim so StreamTokenizer resolves them
+    //     exactly once, giving template literals the same escape semantics as regular strings.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void regularStringBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        final ParseResult rOne = parse("const a = \"\\\\\";\n", bare());
+        final ParseResult rTwo = parse("const a = \"\\\\\\\\\";\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void regularStringTwoCharNewlineEscapeBecomesRealNewline() throws IOException {
+        // The two-char sequence \n (backslash + letter n) is unescaped to an actual newline
+        // character embedded in the string value - distinct from literal text containing 'n'.
+        final ParseResult rEscaped = parse("const a = \"line1\\nline2\";\n", bare());
+        final ParseResult rLiteral = parse("const a = \"line1nline2\";\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+    }
+
+    @Test
+    public void templateLiteralBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        // Regression test for two bugs this fix addresses: one escaped-backslash pair
+        // previously corrupted the synthetic string boundary (silently swallowing the rest
+        // of the line), and two pairs were miscounted as one due to double-unescaping.
+        final ParseResult rOne = parse("const a = `\\\\`;\n", bare());
+        final ParseResult rTwo = parse("const a = `\\\\\\\\`;\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+        assertEquals(parse("const a = \"\\\\\";\n", bare()).get(0), rOne.get(0));
+        assertEquals(parse("const a = \"\\\\\\\\\";\n", bare()).get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBackslashDoesNotSwallowRestOfLine() throws IOException {
+        // Direct regression test for the silent-corruption bug: previously, everything after
+        // the template literal on the same line vanished into a corrupted string value.
+        final ParseResult r = parse("const a = `\\\\`; const b = 1;\n", bare());
+        assertTrue(r.get(0).contains("const b"));
+        assertTrue(r.get(0).contains("1.0"));
+    }
+
+    @Test
+    public void templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText() throws IOException {
+        // Regression test for the false-duplicate bug: the two-char \n escape (meant to
+        // represent a runtime newline) previously collapsed to just the letter 'n', making it
+        // indistinguishable from unrelated literal text containing that same letter.
+        final ParseResult rEscaped = parse("const a = `line1\\nline2`;\n", bare());
+        final ParseResult rLiteral = parse("const a = `line1nline2`;\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBacktickAndQuoteDoNotTerminateEarly() throws IOException {
+        final ParseResult rBacktick = parse("const a = `it\\`s`; const b = 1;\n", bare());
+        final ParseResult rQuote    = parse("const a = `say \\\"hi\\\"`; const b = 1;\n", bare());
+        assertTrue(rBacktick.get(0).contains("const b"));
+        assertTrue(rQuote.get(0).contains("const b"));
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. Sample file
     // -------------------------------------------------------------------------
 
     @Test
