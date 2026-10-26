@@ -19,7 +19,7 @@ package com.quandarypeak.simian;
 
 import java.util.Objects;
 
-public final class LineBuffer implements CharSequence {
+final class LineBuffer implements CharSequence {
     private static final int INITIAL_BUFFER_SIZE = 128;
 
     private final StringBuilder _buffer = new StringBuilder(INITIAL_BUFFER_SIZE);

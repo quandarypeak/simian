@@ -17,7 +17,7 @@
 
 package com.quandarypeak.simian;
 
-public interface LineListener {
+interface LineListener {
     void file();
 
     void line(int lineNumber, LineBuffer line);

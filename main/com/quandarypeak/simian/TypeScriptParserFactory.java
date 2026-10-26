@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class TypeScriptParserFactory extends AbstractCFamilyParserFactory {
+final class TypeScriptParserFactory extends AbstractCFamilyParserFactory {
 
     // TypeScript primitive and special types promoted to TYPE so that
     // IGNORE_SUBTYPE_NAMES and IGNORE_VARIABLE_NAMES work correctly on them.
