@@ -418,6 +418,19 @@ public class JavaScriptParserTest {
         assertTrue(rQuote.get(0).contains("const b"));
     }
 
+    @Test
+    public void escapedForwardSlashResolvesTheSameInRegularStringsAndTemplateLiterals() throws IOException {
+        final ParseResult rString   = parse("const a = \"a\\/b\";\n", bare());
+        final ParseResult rTemplate = parse("const a = `a\\/b`;\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedSlashDoesNotSwallowRestOfLine() throws IOException {
+        final ParseResult r = parse("const a = `a\\/b`; const c = 1;\n", bare());
+        assertTrue(r.get(0).contains("const c"));
+    }
+
     // -------------------------------------------------------------------------
     // 11. Sample file
     // -------------------------------------------------------------------------

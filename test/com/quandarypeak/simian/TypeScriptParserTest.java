@@ -1194,6 +1194,22 @@ public class TypeScriptParserTest {
         assertTrue(rQuote.get(0).contains("const b"));
     }
 
+    @Test
+    public void escapedForwardSlashResolvesTheSameInRegularStringsAndTemplateLiterals() throws IOException {
+        // '\/' is a redundant-but-legal escape (forward slash has no special meaning inside
+        // a string/template literal); it must resolve to a plain '/' in both, and a template
+        // literal must match the equivalent regular string's fingerprint exactly.
+        final ParseResult rString   = parse("const a = \"a\\/b\";\n", bare());
+        final ParseResult rTemplate = parse("const a = `a\\/b`;\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedSlashDoesNotSwallowRestOfLine() throws IOException {
+        final ParseResult r = parse("const a = `a\\/b`; const c = 1;\n", bare());
+        assertTrue(r.get(0).contains("const c"));
+    }
+
     // -------------------------------------------------------------------------
     // 21. Sample file
     // -------------------------------------------------------------------------
