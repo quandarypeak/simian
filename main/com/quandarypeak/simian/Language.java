@@ -41,14 +41,18 @@ public final class Language implements Comparable<Language> {
     public static final Language GROOVY = new Language("Groovy", new GroovyParserFactory(), "groovy");
 
     /**
-     * The JavaScript (ECMAScript) language.
+     * The JavaScript (ECMAScript) language. 'jsx' is JavaScript with embedded JSX markup;
+     * 'mjs'/'cjs' are plain JavaScript explicitly marked as an ES module / CommonJS module
+     * respectively - both are lexically identical to 'js' and need no separate parser.
      */
-    public static final Language JAVA_SCRIPT = new Language("JavaScript", new JavaScriptParserFactory(), "javascript", "js");
+    public static final Language JAVA_SCRIPT = new Language("JavaScript", new JavaScriptParserFactory(), "javascript", "js", "jsx", "mjs", "cjs");
 
     /**
-     * The TypeScript language.
+     * The TypeScript language. 'tsx' is TypeScript with embedded JSX markup; 'mts'/'cts' are
+     * plain TypeScript explicitly marked as an ES module / CommonJS module respectively -
+     * both are lexically identical to 'ts' and need no separate parser.
      */
-    public static final Language TYPESCRIPT = new Language("TypeScript", new TypeScriptParserFactory(), "typescript", "ts");
+    public static final Language TYPESCRIPT = new Language("TypeScript", new TypeScriptParserFactory(), "typescript", "ts", "tsx", "mts", "cts");
 
     /**
      * The C# language.
