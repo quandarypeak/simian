@@ -1113,7 +1113,89 @@ public class TypeScriptParserTest {
     }
 
     // -------------------------------------------------------------------------
-    // 19. Sample file
+    // 20. Escape sequences
+    //     Regular "..."/'...' strings are unescaped directly by StreamTokenizer: \\ -> one
+    //     backslash, \n -> a real newline, \" -> a literal quote, etc.
+    //     Template literals go through JavaScriptTemplateLiteralNormalisingReader first,
+    //     which converts backticks to a synthetic double-quoted string; escape sequences in
+    //     the static text are passed through verbatim so StreamTokenizer resolves them
+    //     exactly once, giving template literals the same escape semantics as regular strings.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void regularStringBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        // 1/2/4 escaped backslash-pairs in source produce 1/2/4 literal backslashes in the
+        // value, so each must be a distinct, stable fingerprint.
+        final ParseResult rOne  = parse("const a = \"\\\\\";\n", bare());
+        final ParseResult rTwo  = parse("const a = \"\\\\\\\\\";\n", bare());
+        final ParseResult rFour = parse("const a = \"\\\\\\\\\\\\\\\\\";\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+        assertNotEquals(rTwo.get(0), rFour.get(0));
+        assertEquals(rOne.get(0), parse("const a = \"\\\\\";\n", bare()).get(0)); // stable/repeatable
+    }
+
+    @Test
+    public void regularStringEscapedQuoteIsPreservedAsLiteralCharacter() throws IOException {
+        final ParseResult r = parse("const a = \"say \\\"hi\\\"\";\n", bare());
+        assertTrue(r.get(0).contains("hi"));
+        assertEquals(1, r.count());
+    }
+
+    @Test
+    public void regularStringTwoCharNewlineEscapeBecomesRealNewline() throws IOException {
+        // The two-char sequence \n (backslash + letter n) is unescaped to an actual newline
+        // character embedded in the string value - distinct from literal text containing 'n'.
+        final ParseResult rEscaped = parse("const a = \"line1\\nline2\";\n", bare());
+        final ParseResult rLiteral = parse("const a = \"line1nline2\";\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+    }
+
+    @Test
+    public void templateLiteralBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        // Regression test for two bugs this fix addresses: one escaped-backslash pair
+        // previously corrupted the synthetic string boundary (silently swallowing the rest
+        // of the line), and two pairs were miscounted as one due to double-unescaping.
+        final ParseResult rOne = parse("const a = `\\\\`;\n", bare());
+        final ParseResult rTwo = parse("const a = `\\\\\\\\`;\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+        // Must match the equivalent regular-string fingerprint exactly (same resolved value).
+        assertEquals(parse("const a = \"\\\\\";\n", bare()).get(0), rOne.get(0));
+        assertEquals(parse("const a = \"\\\\\\\\\";\n", bare()).get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBackslashDoesNotSwallowRestOfLine() throws IOException {
+        // Direct regression test for the silent-corruption bug: previously, everything after
+        // the template literal on the same line vanished into a corrupted string value.
+        final ParseResult r = parse("const a = `\\\\`; const b = 1;\n", bare());
+        assertTrue(r.get(0).contains("const b"));
+        assertTrue(r.get(0).contains("1.0"));
+    }
+
+    @Test
+    public void templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText() throws IOException {
+        // Regression test for the false-duplicate bug: the two-char \n escape (meant to
+        // represent a runtime newline) previously collapsed to just the letter 'n', making it
+        // indistinguishable from unrelated literal text containing that same letter.
+        final ParseResult rEscaped = parse("const a = `line1\\nline2`;\n", bare());
+        final ParseResult rLiteral = parse("const a = `line1nline2`;\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+        // Must match the equivalent regular-string fingerprint exactly (same resolved value).
+        assertEquals(parse("const a = \"line1\\nline2\";\n", bare()).get(0), rEscaped.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBacktickAndQuoteDoNotTerminateEarly() throws IOException {
+        // An escaped backtick or quote inside a template literal's static text must be
+        // preserved as a literal character, not prematurely close the synthetic string.
+        final ParseResult rBacktick = parse("const a = `it\\`s`; const b = 1;\n", bare());
+        final ParseResult rQuote    = parse("const a = `say \\\"hi\\\"`; const b = 1;\n", bare());
+        assertTrue(rBacktick.get(0).contains("const b"));
+        assertTrue(rQuote.get(0).contains("const b"));
+    }
+
+    // -------------------------------------------------------------------------
+    // 21. Sample file
     // -------------------------------------------------------------------------
 
     @Test
