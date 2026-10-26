@@ -20,7 +20,7 @@ package com.quandarypeak.simian;
 import java.io.IOException;
 import java.io.Reader;
 
-public interface Parser {
+interface Parser {
     /**
      * Parses a stream.
      *
