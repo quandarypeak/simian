@@ -40,13 +40,18 @@ import java.io.StringReader;
  * <p>This reader replaces each raw string literal with an equivalent double-quoted string:
  * <ul>
  *   <li>The opening and closing backticks are replaced with {@code "}</li>
- *   <li>Any {@code "} character inside the raw string is replaced with a space — raw strings
- *       cannot contain backticks but can contain double-quotes; replacing them avoids
- *       prematurely closing the synthetic double-quoted string</li>
+ *   <li>Any {@code "} character inside the raw string is escaped as {@code \"} — raw strings
+ *       cannot contain backticks but can contain double-quotes; escaping them avoids
+ *       prematurely closing the synthetic double-quoted string while preserving the quote
+ *       character in the fingerprint</li>
  *   <li>Embedded newlines are replaced with spaces and blank lines are re-inserted after the
  *       closing {@code "} so the total line count is preserved, keeping Simian's line-number
  *       attribution correct</li>
- *   <li>Backslash is not an escape character in Go raw strings and is passed through as-is</li>
+ *   <li>Backslash is not an escape character in Go raw strings — every {@code \} is literal
+ *       content. Because the synthetic string is re-tokenised with C-style escape processing,
+ *       each literal backslash is emitted as {@code \\} so the tokenizer's single resolution
+ *       pass reduces it back to exactly one literal backslash, instead of misreading it as the
+ *       start of an escape sequence</li>
  * </ul>
  *
  * <p>Comments ({@code //} and {@code /* *}{@code /}) and regular strings ({@code "..."} and
@@ -139,10 +144,14 @@ final class GoRawStringNormalisingReader extends Reader {
      * Processes a raw string literal whose opening backtick has already been consumed.
      * Emits a synthetic {@code "..."} string and returns the index after the closing backtick.
      *
-     * <p>Go raw strings contain no escape sequences — every character is literal. The only
-     * transformations needed are replacing embedded {@code "} with a space (to avoid closing
-     * the synthetic string) and replacing embedded newlines with spaces (with compensating
-     * blank lines to preserve total line count).
+     * <p>Go raw strings contain no escape sequences — every character, including backslash, is
+     * literal. But the synthetic {@code "..."} string this method produces is re-tokenised by
+     * a {@code StreamTokenizer} that <em>does</em> apply C-style escape processing, so a literal
+     * backslash copied through unchanged would be misread as the start of an escape sequence
+     * (silently dropping it, turning it into a control character, or swallowing the closing
+     * quote). To round-trip correctly, every literal {@code \} is emitted as {@code \\}, and
+     * every embedded {@code "} is emitted as {@code \"} — both resolve back to exactly the
+     * original character once the tokenizer makes its single escape-resolution pass.
      */
     private static int processRawString(
             final StringBuilder src, int i, final int len, final StringBuilder out) {
@@ -171,8 +180,15 @@ final class GoRawStringNormalisingReader extends Reader {
                 }
                 i++;
             } else if (c == '"') {
-                // Embedded double-quote: replace with space to avoid closing the synthetic string.
-                out.append(' ');
+                // Embedded double-quote: escape it so it doesn't close the synthetic string,
+                // while preserving the quote character itself in the fingerprinted value.
+                out.append('\\').append('"');
+                i++;
+            } else if (c == '\\') {
+                // Literal backslash (Go raw strings have no escapes): emit as \\ so the
+                // tokenizer's escape resolution reduces it back to exactly one literal
+                // backslash instead of treating it as an escape introducer.
+                out.append('\\').append('\\');
                 i++;
             } else {
                 out.append(c);

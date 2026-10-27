@@ -723,13 +723,65 @@ public class GoParserTest {
 
     @Test
     public void embeddedDoubleQuoteInRawStringDoesNotBreakTokenisation() throws IOException {
-        // A raw string can contain double-quote characters. The normaliser replaces them
-        // with spaces so the synthetic "..." string is not prematurely closed.
+        // A raw string can contain double-quote characters. The normaliser escapes them
+        // as \" so the synthetic "..." string is not prematurely closed.
         // The surrounding code must still tokenise correctly.
         final ParseResult r = parse("s := `say \"hello\"`\n", bare());
         assertEquals(1, r.count());
         assertTrue("assignment with raw string containing \" must tokenise cleanly",
                 r.get(0).startsWith("s:="));
+    }
+
+    // -------------------------------------------------------------------------
+    // 17b. Raw string backslash and embedded-quote handling
+    //     Go raw strings apply zero escape processing: every backslash is literal data,
+    //     which is exactly why they're idiomatic for Windows paths, regexes, and SQL.
+    //     But GoRawStringNormalisingReader's synthetic "..." output is re-tokenised by a
+    //     StreamTokenizer that DOES apply C-style escape resolution. Each literal backslash
+    //     is therefore re-escaped as \\ (and each embedded " as \") so it round-trips back
+    //     to exactly the original character instead of being misread as an escape sequence.
+    // -------------------------------------------------------------------------
+
+    private static final String Q = "\""; // one literal double-quote character
+    private static final String BS = "\\"; // one literal backslash character
+
+    @Test
+    public void rawStringSingleAndDoubleBackslashProduceDistinguishableFingerprints() throws IOException {
+        final ParseResult rOne = parse("s := `" + BS + "share`\n", bare());
+        final ParseResult rTwo = parse("s := `" + BS + BS + "share`\n", bare());
+        assertEquals("s:=" + Q + BS + "share" + Q, rOne.get(0));
+        assertEquals("s:=" + Q + BS + BS + "share" + Q, rTwo.get(0));
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void rawStringWindowsPathDoesNotInjectControlCharacters() throws IOException {
+        // Before the fix, `C:\Users\name` resolved to "C:Users<newline>ame" because the
+        // tokenizer read \n (backslash followed by the letter n) as an escaped newline.
+        final ParseResult r = parse("s := `C:" + BS + "Users" + BS + "name`\n", bare());
+        assertEquals(1, r.count());
+        assertEquals("s:=" + Q + "C:" + BS + "Users" + BS + "name" + Q, r.get(0));
+    }
+
+    @Test
+    public void rawStringTrailingBackslashDoesNotSwallowFollowingCode() throws IOException {
+        // Before the fix, a raw string ending in `\` (a normal way to write a directory
+        // path) escaped the synthetic closing quote, corrupting the rest of the line.
+        final ParseResult r = parse("s := `C:" + BS + "`\ny := 1\n", bare());
+        assertEquals(2, r.count());
+        assertEquals("s:=" + Q + "C:" + BS + Q, r.get(0));
+        assertEquals("y:=1.0", r.get(1));
+    }
+
+    @Test
+    public void embeddedDoubleQuoteInRawStringIsPreservedNotLost() throws IOException {
+        // Previously an embedded " was replaced with a space, losing it from the
+        // fingerprint. It must now survive as a literal quote character, distinguishing
+        // it from a raw string that genuinely contains a space in that position.
+        final ParseResult rQuote = parse("s := `say " + Q + "hi" + Q + "`\n", bare());
+        final ParseResult rSpace = parse("s := `say  hi `\n", bare());
+        assertEquals("s:=" + Q + "say " + Q + "hi" + Q + Q, rQuote.get(0));
+        assertNotEquals(rQuote.get(0), rSpace.get(0));
     }
 
     @Test
