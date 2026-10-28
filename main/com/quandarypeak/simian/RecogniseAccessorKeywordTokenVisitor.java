@@ -43,9 +43,9 @@ import java.util.Set;
  * other method/variable name.
  *
  * <p>Examples resolved correctly by this single rule: {@code get fahrenheit()} (keyword role)
- * vs {@code cache.get(key)} and {@code class Foo { get() {} }} (ordinary); {@code x as string}
- * vs {@code obj.as(x)}; {@code for (a of b)} vs {@code Array.of(x)}; {@code x is string} vs
- * {@code obj.is(x)}.
+ * vs {@code cache.get(key)}, {@code class Foo { get() {} }}, and {@code { get: load }}
+ * (ordinary); {@code x as string} vs {@code obj.as(x)}; {@code for (a of b)} vs
+ * {@code Array.of(x)}; {@code x is string} vs {@code obj.is(x)}.
  */
 final class RecogniseAccessorKeywordTokenVisitor extends DecoratorTokenVisitor {
     private final Set<String> _contextualKeywords;
@@ -114,10 +114,13 @@ final class RecogniseAccessorKeywordTokenVisitor extends DecoratorTokenVisitor {
                 // Immediately followed by '(' - ordinary identifier being called/declared,
                 // regardless of whether it was dot-preceded.
                 flushPendingOrdinary(METHOD);
-            } else if (_pendingWasDotPreceded) {
-                flushPendingOrdinary(VARIABLE);
             } else {
-                flushPendingKeywordRole();
+                // Followed by punctuation other than '(' (':' in an object key, ',' or ')' in
+                // a parameter list, '=' in a plain declaration, ';', etc.) - never "another
+                // identifier", so this can never be a genuine keyword role regardless of
+                // dot-preceded status. E.g. '{ get: load }' is an ordinary object key, not an
+                // accessor declaration.
+                flushPendingOrdinary(VARIABLE);
             }
         }
         _precededByDot = c == '.';
@@ -153,11 +156,10 @@ final class RecogniseAccessorKeywordTokenVisitor extends DecoratorTokenVisitor {
         if (_pendingName == null) {
             return;
         }
-        if (_pendingWasDotPreceded) {
-            flushPendingOrdinary(VARIABLE);
-        } else {
-            flushPendingKeywordRole();
-        }
+        // A number/string/other-token/EOF immediately following is never "another identifier"
+        // either, so - same reasoning as visitPunctuation - this can never be a genuine
+        // keyword role.
+        flushPendingOrdinary(VARIABLE);
     }
 
     private void flushPendingOrdinary(final int type) {

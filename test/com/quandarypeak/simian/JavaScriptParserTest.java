@@ -470,6 +470,29 @@ public class JavaScriptParserTest {
         assertEquals(rPlain.get(0), rGetter.get(0));
     }
 
+    @Test
+    public void objectKeyNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        // Regression test: 'get'/'set' as an object-literal property key (followed by ':',
+        // not '(' and not another identifier) must not be treated as a genuine accessor
+        // declaration - it's an ordinary key like any other.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("const api = { get: load }\n", opts);
+        final ParseResult rSet = parse("const api = { set: load }\n", opts);
+        assertNotEquals(rGet.get(0), rSet.get(0));
+    }
+
+    @Test
+    public void parameterNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        // 'get'/'set' as a function parameter name (followed by ',' or ')', not '(' and not
+        // another identifier) must likewise not be treated as a genuine accessor declaration.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult r = parse("function f(get, set) {}\n", opts);
+        assertTrue(r.get(0).contains("get"));
+        assertTrue(r.get(0).contains("set"));
+    }
+
     // -------------------------------------------------------------------------
     // 13. Sample file
     // -------------------------------------------------------------------------
