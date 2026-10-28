@@ -465,6 +465,27 @@ public class JavaScriptParserTest {
     }
 
     @Test
+    public void templateLiteralWithEscapedBackslashMatchesEquivalentString() throws IOException {
+        // Same equivalence as templateLiteralBackslashEscapesProduceCorrectLiteralCounts, with
+        // prefix content and a trailing call after the literal rather than a bare declaration.
+        final ParseResult rString   = parse("const p = \"C:\\\\\"; foo(bar);\n", bare());
+        final ParseResult rTemplate = parse("const p = `C:\\\\`; foo(bar);\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapeSequencesMatchEquivalentString() throws IOException {
+        // String-vs-template equivalence for the two-char \n escape specifically - distinct
+        // from templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText (which only
+        // checks internal template-literal consistency) and from
+        // escapedForwardSlashResolvesTheSameInRegularStringsAndTemplateLiterals (which only
+        // covers \/, not \n).
+        final ParseResult rString   = parse("x = \"a\\nb\"\n", bare());
+        final ParseResult rTemplate = parse("x = `a\\nb`\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
     public void templateLiteralEscapedSlashDoesNotSwallowRestOfLine() throws IOException {
         final ParseResult r = parse("const a = `a\\/b`; const c = 1;\n", bare());
         assertTrue(r.get(0).contains("const c"));
