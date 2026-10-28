@@ -1173,6 +1173,45 @@ public class TypeScriptParserTest {
     }
 
     @Test
+    public void templateLiteralWithPrefixTextEndingInEscapedBackslashDoesNotSwallowRestOfLine() throws IOException {
+        // Same scenario as templateLiteralEscapedBackslashDoesNotSwallowRestOfLine, with
+        // realistic prefix content (Windows-path style) before the trailing escaped pair.
+        // Asserting on "1.0" (not just "foo(bar)") matters: if the line were swallowed into a
+        // corrupted string value, "const b" and "1" would still appear as literal text inside
+        // it - only a genuinely separate, correctly-tokenized NUMBER renders as "1.0".
+        final ParseResult r = parse("const p = `C:\\\\`; const b = 1;\n", bare());
+        assertTrue(r.get(0).contains("const b"));
+        assertTrue(r.get(0).contains("1.0"));
+    }
+
+    @Test
+    public void templateLiteralEscapedBackslashDoesNotSwallowRestOfLineUnderIgnoreStrings() throws IOException {
+        // The swallow-prevention must hold even when IGNORE_STRINGS is also suppressing string
+        // content - normalisation happens at the Reader level, before any token visitor
+        // (including IgnoreStringsTokenVisitor) ever runs, so the two must be independent.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_STRINGS, Boolean.TRUE);
+        final ParseResult rFoo = parse("const p = `C:\\\\`; foo(bar);\n", opts);
+        final ParseResult rBaz = parse("const p = `C:\\\\`; baz(qux);\n", opts);
+        assertNotEquals(rFoo.get(0), rBaz.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBacktickBeforeTrailingContentDoesNotTerminateEarly() throws IOException {
+        // A single backslash immediately before a backtick genuinely escapes it in real JS/TS
+        // (unlike Go raw strings, where backslash has no escape meaning at all) - the literal
+        // backtick becomes part of the string's content, and the string correctly terminates
+        // only at the real closing backtick that follows. Comparing against a control where the
+        // escaped backtick is replaced by a literal space catches content-corruption bugs (e.g.
+        // collapsing the escape to a space) that "foo(bar) survives" alone would miss, since
+        // both would otherwise terminate at the same place.
+        final ParseResult rBacktick = parse("const p = `C:\\`end`; foo(bar);\n", bare());
+        final ParseResult rSpace    = parse("const p = `C: end`; foo(bar);\n", bare());
+        assertTrue(rBacktick.get(0).contains("foo(bar)"));
+        assertNotEquals(rSpace.get(0), rBacktick.get(0));
+    }
+
+    @Test
     public void templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText() throws IOException {
         // Regression test for the false-duplicate bug: the two-char \n escape (meant to
         // represent a runtime newline) previously collapsed to just the letter 'n', making it
