@@ -1,0 +1,543 @@
+<title>How Simian Catches Duplicate Code</title>
+<style>
+  :root{
+    color-scheme: light;
+    --paper:      #f3f2ee;
+    --panel:      #fbfaf7;
+    --ink:        #1b1b19;
+    --ink-2:      #4a4a46;
+    --muted:      #85837c;
+    --hair:       #ddd9d0;
+    --accent:     #3b4f9e;
+    --accent-ink: #ffffff;
+    --accent-soft:#e4e8f7;
+    --code-bg:    #eae7dd;
+    --code-ink:   #2a2a26;
+    --good:       #2f6b3a;
+    --shadow: 0 1px 2px rgba(20,20,15,.04), 0 6px 20px rgba(20,20,15,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --paper:      #131317;
+      --panel:      #1a1a1f;
+      --ink:        #ececea;
+      --ink-2:      #b9b8b2;
+      --muted:      #85837c;
+      --hair:       #303036;
+      --accent:     #8b9de8;
+      --accent-ink: #10121c;
+      --accent-soft:#232a45;
+      --code-bg:    #1e1f26;
+      --code-ink:   #dcdad0;
+      --good:       #7fbf8a;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:      #131317;
+    --panel:      #1a1a1f;
+    --ink:        #ececea;
+    --ink-2:      #b9b8b2;
+    --muted:      #85837c;
+    --hair:       #303036;
+    --accent:     #8b9de8;
+    --accent-ink: #10121c;
+    --accent-soft:#232a45;
+    --code-bg:    #1e1f26;
+    --code-ink:   #dcdad0;
+    --good:       #7fbf8a;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+  }
+
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    font-size:17px; line-height:1.65;
+  }
+  ::selection{ background:var(--accent-soft); }
+  code, .mono{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; }
+
+  .page{ max-width:1180px; margin:0 auto; padding:0 1.4rem; display:grid; grid-template-columns:220px minmax(0,720px); gap:3.2rem; }
+  @media (max-width:980px){ .page{ grid-template-columns:1fr; } }
+
+  /* ---------- masthead ---------- */
+  .masthead{ grid-column:1 / -1; max-width:760px; margin:0 auto; padding:4.2rem 0 2.6rem; text-align:left; }
+  .kicker{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.72rem; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 1rem;
+  }
+  .masthead h1{
+    font-size:clamp(2.1rem,4.4vw,3.05rem); line-height:1.08; margin:0 0 1rem; font-weight:600;
+    text-wrap:balance;
+  }
+  .masthead .dek{ font-size:1.18rem; color:var(--ink-2); max-width:56ch; margin:0 0 1.6rem; text-wrap:balance; }
+  .byline{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    display:flex; gap:1.4rem; flex-wrap:wrap; border-top:1px solid var(--hair); padding-top:1rem;
+  }
+  .byline b{ color:var(--ink-2); font-weight:600; }
+
+  /* ---------- toc ---------- */
+  nav.toc{ position:sticky; top:2.4rem; align-self:start; padding-top:.3rem; }
+  nav.toc .label{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.7rem;
+  }
+  nav.toc ol{ list-style:none; margin:0; padding:0; counter-reset:toc; }
+  nav.toc li{ counter-increment:toc; margin-bottom:.55rem; }
+  nav.toc a{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.86rem; color:var(--ink-2);
+    text-decoration:none; display:flex; gap:.5em;
+  }
+  nav.toc a::before{
+    content: counter(toc) "."; color:var(--muted); font-variant-numeric:tabular-nums; flex:none;
+  }
+  nav.toc a:hover{ color:var(--accent); }
+  @media (max-width:980px){
+    nav.toc{ position:static; border-bottom:1px solid var(--hair); padding-bottom:1.4rem; margin-bottom:.6rem; }
+    nav.toc ol{ columns:2; }
+  }
+
+  /* ---------- article ---------- */
+  article{ padding-bottom:5rem; min-width:0; }
+  section{ margin-top:3.2rem; scroll-margin-top:2rem; }
+  section:first-of-type{ margin-top:0; }
+  h2{
+    font-size:1.55rem; font-weight:600; margin:0 0 1.1rem; display:flex; align-items:baseline; gap:.6rem;
+    text-wrap:balance;
+  }
+  h2 .num{ font-family:ui-monospace,monospace; font-size:.95rem; color:var(--accent); font-weight:700; }
+  h3{ font-size:1.14rem; font-weight:600; margin:2rem 0 .7rem; }
+  p{ margin:0 0 1.05rem; max-width:70ch; }
+  p, li{ color:var(--ink-2); }
+  strong{ color:var(--ink); font-weight:600; }
+  a{ color:var(--accent); }
+  ul, ol.plain{ margin:0 0 1.1rem; padding-left:1.3rem; max-width:68ch; }
+  li{ margin-bottom:.4rem; }
+
+  .lede{ font-size:1.03rem; color:var(--ink); }
+
+  code.inline{
+    background:var(--code-bg); color:var(--code-ink); padding:.05rem .35rem; border-radius:4px;
+    font-size:.86em;
+  }
+
+  /* ---------- callout / implementation note ---------- */
+  .note{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 8px 8px 0;
+    padding:.9rem 1.1rem; margin:1.3rem 0; font-size:.93rem;
+  }
+  .note .tag{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; font-weight:700; color:var(--accent); display:block; margin-bottom:.35rem;
+  }
+  .note p{ margin:0; color:var(--ink); max-width:none; }
+  .note code{ background:rgba(0,0,0,0.06); }
+  :root[data-theme="dark"] .note code{ background:rgba(255,255,255,0.08); }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .note code{ background:rgba(255,255,255,0.08); } }
+
+  /* ---------- code / terminal panels ---------- */
+  pre.code{
+    background:var(--code-bg); color:var(--code-ink); border-radius:8px; padding:.95rem 1.1rem;
+    font-size:.82rem; line-height:1.6; overflow-x:auto; margin:1.1rem 0; box-shadow:var(--shadow);
+  }
+  pre.code .c{ color:var(--muted); }
+  pre.code .h{ color:var(--accent); font-weight:600; }
+
+  /* ---------- figures ---------- */
+  figure{ margin:1.8rem 0; padding:1.3rem 1.3rem 1rem; background:var(--panel); border:1px solid var(--hair);
+    border-radius:10px; box-shadow:var(--shadow); overflow-x:auto; }
+  figure svg{ display:block; max-width:100%; height:auto; margin:0 auto; }
+  figcaption{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    margin-top:.8rem; padding-top:.7rem; border-top:1px solid var(--hair); max-width:none;
+  }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{ overflow-x:auto; margin:1.2rem 0; }
+  table{ border-collapse:collapse; width:100%; font-size:.86rem; }
+  table caption{ text-align:left; font-size:.78rem; color:var(--muted); margin-bottom:.5rem;
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }
+  th, td{ border-bottom:1px solid var(--hair); padding:.55rem .8rem; text-align:left; vertical-align:top; }
+  th{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); font-weight:700;
+  }
+  td{ color:var(--ink-2); }
+  td code, th code{ font-size:.84em; }
+  tr:last-child td{ border-bottom:none; }
+
+  /* ---------- footnote / references ---------- */
+  .refs{ font-size:.86rem; }
+  .refs li{ margin-bottom:.6rem; }
+  .refs code{ font-size:.84em; }
+
+  hr.rule{ border:none; border-top:1px solid var(--hair); margin:2.6rem 0; }
+
+  footer.page-footer{
+    grid-column:1 / -1; max-width:760px; margin:0 auto; padding:0 0 4rem; color:var(--muted);
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.8rem; border-top:1px solid var(--hair);
+    padding-top:1.4rem;
+  }
+</style>
+
+<div class="masthead">
+  <p class="kicker">Technical report</p>
+  <h1>How Simian Catches Duplicate Code</h1>
+  <p class="dek">A structural analysis of the matching engine at the heart of the Simian Similarity Analyzer — how a tool with no idea what a “function” is still finds exact structural duplication across Java, Go, TypeScript, Python and a dozen other languages.</p>
+  <div class="byline">
+    <span><b>Subject</b> Simian Similarity Analyzer v4.2.2</span>
+    <span><b>Grounded in</b> <code class="inline">main/com/quandarypeak/simian/*.java</code></span>
+    <span><b>Verified against</b> real <code class="inline">simian.jar</code> runs, not description alone</span>
+  </div>
+</div>
+
+<div class="page">
+  <nav class="toc">
+    <p class="label">Contents</p>
+    <ol>
+      <li><a href="#intro">The problem</a></li>
+      <li><a href="#architecture">Architecture at a glance</a></li>
+      <li><a href="#frontend">Canonicalizing source</a></li>
+      <li><a href="#engine">The matching engine</a></li>
+      <li><a href="#tiling">Greedy tiling</a></li>
+      <li><a href="#quiet">Why output stays quiet</a></li>
+      <li><a href="#options">Options as canonicalizations</a></li>
+      <li><a href="#scale">Complexity &amp; scale</a></li>
+      <li><a href="#limits">What it can't see</a></li>
+      <li><a href="#related">Related techniques</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#appendix">Appendix: reproducing this</a></li>
+    </ol>
+  </nav>
+
+  <article>
+
+    <section id="intro">
+      <h2><span class="num">1</span> The problem</h2>
+      <p class="lede">Simian finds blocks of source code that recur — verbatim or near-verbatim — anywhere across a set of files, in any of roughly twenty supported languages, fast enough to scan the Linux kernel source tree in minutes. It does this <strong>without ever building a parse tree</strong>. There is no AST, no control-flow graph, no notion of “function” or “class” at all in the matching engine. That is the central design decision this report explains: Simian treats a source file as nothing more than <strong>a sequence of lines</strong>, and finds duplication by comparing sequences of lines against each other using hashing, not syntax trees.</p>
+      <p>This is a deliberate trade. AST-diffing tools (structural clone detectors) can recognize duplication survives renaming, reordering, or reformatting that a line-based tool cannot. But they need a real parser per language, and a real parser is expensive to build and to keep correct. Simian's bet — proven over two decades of the tool's history — is that a much cheaper <em>line-canonicalization</em> step, followed by a language-agnostic matching engine, catches the overwhelming majority of duplication that actually matters in a codebase, at a fraction of the engineering cost of a full compiler front end per language.</p>
+      <p>The rest of this report walks through exactly how that works: how a line of source becomes a fingerprint, how fingerprints become windows, and how windows become the duplicate-block reports you see on the command line.</p>
+    </section>
+
+    <section id="architecture">
+      <h2><span class="num">2</span> Architecture at a glance</h2>
+      <p>Simian's implementation splits cleanly into two layers, and the split is the whole story. A <strong>front end</strong>, one per language, turns arbitrary source text into a canonical stream of classified tokens. A single <strong>matching engine</strong>, shared by every language, turns that stream into duplicate-block reports. Everything language-specific — Go's raw strings, Python's triple-quoted strings, TypeScript's type annotations — is resolved before the boundary in Figure 1. Nothing past that boundary knows or cares what language it came from.</p>
+
+      <figure>
+        <svg viewBox="0 0 980 260" role="img" aria-label="Pipeline diagram: a source file passes through a per-language Parser and TokenVisitor chain to become a canonical token stream, then crosses a boundary into a language-agnostic matching engine consisting of line hashing, sliding windows, hash-bucket grouping, and greedy tiling, producing a duplicate block report.">
+          <defs>
+            <marker id="arrow1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <style>
+            .lbl{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:12px; }
+            .cap{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; }
+          </style>
+
+          <!-- zone labels -->
+          <text x="230" y="26" class="cap" fill="var(--muted)" text-anchor="middle">one adapter per language</text>
+          <text x="740" y="26" class="cap" fill="var(--accent)" text-anchor="middle" font-weight="700">one engine, every language</text>
+
+          <!-- boundary -->
+          <line x1="450" y1="42" x2="450" y2="240" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="4 5"/>
+
+          <!-- box 1: source -->
+          <rect x="20" y="110" width="130" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="85" y="134" class="lbl" text-anchor="middle" fill="currentColor">Source file</text>
+          <text x="85" y="150" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">.go / .ts / .py&#8230;</text>
+
+          <!-- box 2: parser -->
+          <rect x="185" y="100" width="150" height="76" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="260" y="124" class="lbl" text-anchor="middle" fill="currentColor">Language parser</text>
+          <text x="260" y="140" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">GoParser, PythonParser,</text>
+          <text x="260" y="153" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">TypeScriptParser&#8230;</text>
+
+          <!-- box 3: visitor chain -->
+          <rect x="365" y="92" width="150" height="92" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="440" y="116" class="lbl" text-anchor="middle" fill="currentColor">TokenVisitor chain</text>
+          <text x="440" y="132" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">classify identifiers,</text>
+          <text x="440" y="145" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">apply -ignoreX options,</text>
+          <text x="440" y="158" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10.5">emit canonical line text</text>
+
+          <!-- box 4: line hash -->
+          <rect x="470" y="200" width="120" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="530" y="230" class="lbl" text-anchor="middle" fill="currentColor" font-size="11.5">Per-line hash</text>
+
+          <!-- box 5: window -->
+          <rect x="618" y="200" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="683" y="223" class="lbl" text-anchor="middle" fill="currentColor" font-size="11.5">Sliding window</text>
+          <text x="683" y="238" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10">N = threshold</text>
+
+          <!-- box 6: bucket -->
+          <rect x="576" y="30" width="130" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="641" y="54" class="lbl" text-anchor="middle" fill="currentColor" font-size="11.5">Hash buckets</text>
+          <text x="641" y="70" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10">across all files</text>
+
+          <!-- box 7: tiling -->
+          <rect x="740" y="30" width="130" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="805" y="54" class="lbl" text-anchor="middle" fill="var(--accent)" font-size="11.5" font-weight="700">Greedy tiling</text>
+          <text x="805" y="70" class="lbl" text-anchor="middle" fill="var(--accent)" font-size="10">extend to maximal</text>
+
+          <!-- box 8: report -->
+          <rect x="900" y="188" width="0" height="0" fill="none"/>
+          <rect x="825" y="110" width="140" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="895" y="134" class="lbl" text-anchor="middle" fill="currentColor" font-size="11.5">Duplicate block</text>
+          <text x="895" y="150" class="lbl" text-anchor="middle" fill="var(--muted)" font-size="10">report</text>
+
+          <!-- arrows -->
+          <line x1="150" y1="138" x2="182" y2="138" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+          <line x1="335" y1="138" x2="362" y2="138" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+          <line x1="440" y1="184" x2="500" y2="198" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+          <line x1="590" y1="225" x2="616" y2="225" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+          <line x1="670" y1="199" x2="650" y2="88" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+          <line x1="706" y1="58" x2="738" y2="58" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#arrow1)"/>
+          <line x1="850" y1="86" x2="880" y2="108" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"/>
+
+          <text x="212" y="128" class="lbl" fill="var(--muted)" font-size="9.5" text-anchor="middle">tokens</text>
+          <text x="349" y="128" class="lbl" fill="var(--muted)" font-size="9.5" text-anchor="middle">typed</text>
+          <text x="475" y="205" class="lbl" fill="var(--muted)" font-size="9.5">31&#215;h+tok</text>
+          <text x="603" y="216" class="lbl" fill="var(--muted)" font-size="9.5">31&#215;h+line</text>
+        </svg>
+        <figcaption><strong>Figure 1.</strong> Everything left of the dashed line is written once per language and knows nothing about hashing. Everything right of it is written once, total, and knows nothing about syntax — it only ever sees canonical text and 64-bit numbers.</figcaption>
+      </figure>
+
+      <p>Sections 3 and 4 walk each side of that boundary in turn.</p>
+    </section>
+
+    <section id="frontend">
+      <h2><span class="num">3</span> Layer 1 — canonicalizing source into a line stream</h2>
+      <p>Each language's <code class="inline">Parser</code> (e.g. <code class="inline">GoParser</code>, <code class="inline">PythonParser</code>, <code class="inline">TypeScriptParser</code>) wraps a <code class="inline">java.io.StreamTokenizer</code>-style scanner configured for that language's comment syntax, string delimiters, and word characters. For anything a plain character-oriented tokenizer would get wrong — Go's backtick raw strings, TypeScript's <code class="inline">`template ${literals}`</code>, Python's triple-quoted strings — a normalising <code class="inline">Reader</code> sits in front of the tokenizer and rewrites those constructs onto a single line first, so a literal that spans ten physical lines still produces exactly one token instead of desynchronizing every line number after it.</p>
+      <p>The tokenizer emits a stream of typed events — <code class="inline">visitIdentifier</code>, <code class="inline">visitNumber</code>, <code class="inline">visitString</code>, <code class="inline">visitPunctuation</code>, <code class="inline">visitComment</code> — one line at a time, into a chain of <code class="inline">TokenVisitor</code> decorators (the Decorator pattern: each stage wraps the next and can rewrite or drop what passes through). The first stage that matters is classification.</p>
+
+      <h3>3.1 Classifying identifiers without a symbol table</h3>
+      <p><code class="inline">RecogniseIdentifiersTokenVisitor</code> looks at a bare identifier and, using only lexical shape and a per-language keyword/type-name set, buckets it into one of four kinds — <code class="inline">TYPE</code>, <code class="inline">CONSTANT</code>, <code class="inline">METHOD</code>, or <code class="inline">VARIABLE</code> — with no symbol table and no lookahead beyond the very next token:</p>
+      <ul>
+        <li>In the language's known type/keyword set &rarr; <code class="inline">TYPE</code> or <code class="inline">KEYWORD</code> directly.</li>
+        <li>All-uppercase with at least one letter (<code class="inline">MAX_RETRIES</code>) &rarr; <code class="inline">CONSTANT</code>.</li>
+        <li>Leading uppercase otherwise (<code class="inline">BufferedReader</code>) &rarr; <code class="inline">TYPE</code>.</li>
+        <li>Anything else, held back until the <em>next</em> token is seen: an immediately-following <code class="inline">(</code> makes it a <code class="inline">METHOD</code>, anything else makes it a <code class="inline">VARIABLE</code>.</li>
+      </ul>
+      <div class="note">
+        <span class="tag">Why this matters right now</span>
+        <p>This is exactly the heuristic that this branch's two classification fixes touch. A one-character name like <code class="inline">T</code> is "all-uppercase" by the naive rule (no lowercase letters), so it used to fall into <code class="inline">CONSTANT</code> — wrong for a generic type parameter. The fix special-cases length-1 names to fall through to the leading-uppercase rule instead, landing on <code class="inline">TYPE</code>. Symmetrically, <code class="inline">_</code> has no lowercase letters either, but it also has no uppercase letters — the fixed rule requires at least one actual uppercase character before calling something a constant, so <code class="inline">_</code> now lands on <code class="inline">VARIABLE</code>. See <code class="inline">RecogniseIdentifiersTokenVisitor.java:113</code>.</p>
+      </div>
+
+      <h3>3.2 The decorator chain: options as line transforms</h3>
+      <p>Every <code class="inline">-ignoreX</code> command-line option is implemented as one more link in that same decorator chain — <code class="inline">IgnoreWordsTokenVisitor</code>, <code class="inline">IgnoreStringsTokenVisitor</code>, <code class="inline">IgnoreTypeAnnotationsTokenVisitor</code>, and a dozen others. Each one either passes a token through unchanged, rewrites it, or suppresses it entirely before it reaches the final stage, <code class="inline">DefaultTokenVisitor</code>, which concatenates whatever tokens survive into one canonical, single-space-normalised string per physical line.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 1 &mdash; the same source line, canonicalized under different option sets (illustrative)</caption>
+          <thead><tr><th>Source line</th><th>Options active</th><th>Canonical line fed to the hasher</th></tr></thead>
+          <tbody>
+            <tr><td><code>const tax: number = price * 0.08;</code></td><td>none</td><td><code>const tax : number = price * 0.08 ;</code></td></tr>
+            <tr><td><code>const tax: number = price * 0.08;</code></td><td><code>ignoreTypeAnnotations</code></td><td><code>const tax = price * 0.08 ;</code></td></tr>
+            <tr><td><code>const vat: string = cost * 0.08;</code></td><td><code>ignoreTypeAnnotations</code></td><td><code>const vat = cost * 0.08 ;</code></td></tr>
+            <tr><td><code>func GetUserGreeting(name string)</code></td><td><code>ignoreVariableNames</code></td><td><code>func GetUserGreeting ( _ string )</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Note the second and third rows: two lines that differ in both variable name and declared type collapse to two lines that differ only in one identifier — <code class="inline">tax</code> vs. <code class="inline">vat</code> — after type annotations are suppressed. Add <code class="inline">ignoreVariableNames</code> and they become byte-for-byte identical. This is the entire mechanism behind every <code class="inline">-ignoreX</code> flag: <strong>they never touch the matching engine.</strong> They only change what canonical text the engine is asked to compare.</p>
+
+      <p>A line that canonicalizes to nothing — for example a line containing only a curly brace once <code class="inline">ignoreCurlyBraces</code> is active — never reaches the matching engine at all. <code class="inline">DefaultTokenVisitor.visitEnd()</code> checks <code class="inline">!_line.isEmpty()</code> before notifying the next layer, so an emptied-out line is skipped entirely: no line number is consumed, and it cannot break a run of otherwise-matching neighbours. This is why a Go <code class="inline">import ( ... )</code> block or a closing brace can sit physically between two matching regions without severing the match — as far as the engine is concerned, that line never existed.</p>
+    </section>
+
+    <section id="engine">
+      <h2><span class="num">4</span> Layer 2 — the matching engine</h2>
+      <p>Everything from here on operates on one input only: a stream of <code class="inline">(line number, canonical text)</code> pairs, one per significant line, with no memory of which language, parser, or option produced it.</p>
+
+      <h3>4.1 Turning a line into a number</h3>
+      <p>As <code class="inline">DefaultTokenVisitor</code> builds the canonical text for a line, it simultaneously folds every token into a running 64-bit hash, via <code class="inline">LineBuffer</code>:</p>
+      <pre class="code">hash = 0
+for each token t appended to the line:
+    hash = <span class="h">31</span> * hash + hashOf(t)</pre>
+      <p>The multiplier 31 is not incidental — it is the same constant <code class="inline">java.lang.String.hashCode()</code> uses, for the same reason: it is prime, small enough to be a single shift-and-subtract, and produces a well-distributing polynomial hash over token sequences. Two lines produce the same hash if and only if (modulo the vanishingly small chance of a 64-bit collision) their canonical token sequences are identical.</p>
+
+      <h3>4.2 Fixed-width windows over the line stream</h3>
+      <p>Simian never compares single lines — a one-line match is almost always coincidence (a lone closing brace, a common <code class="inline">return null;</code>). Instead, <code class="inline">-threshold</code> (default 6) sets a window width, and <code class="inline">StreamLoader</code> maintains a small ring buffer of in-flight windows as significant lines arrive:</p>
+      <ul>
+        <li>Every new significant line extends <em>every currently open window</em> by one more line, folding that line's hash into the window's running hash the same way — <code class="inline">windowHash = 31 * windowHash + lineHash</code>.</li>
+        <li>A fresh window is opened at every single line position.</li>
+        <li>Once the <em>oldest</em> open window has accumulated exactly <code class="inline">threshold</code> lines, it is sealed into an immutable <code class="inline">Block</code> — a (start line, end line, 64-bit hash) triple — and linked to the previous sealed block from the same file.</li>
+      </ul>
+      <p>The upshot: a file with <em>k</em> significant lines produces <em>k − threshold + 1</em> overlapping windows, each shifted by exactly one line from its neighbour, each independently hashed.</p>
+
+      <h3>4.3 One global table, every file</h3>
+      <p>Every sealed window, from every file being scanned, is inserted into one process-wide table keyed by its 64-bit hash (<code class="inline">BlockMap</code>, backed by a primitive <code class="inline">long &rarr; object</code> map from GNU Trove specifically to avoid boxing millions of <code class="inline">Long</code> objects). Windows land in the same bucket if and only if their hashes match — which, by construction, means their <em>canonical content</em> matches, regardless of which file, or where in that file, they came from. A bucket with only one window in it is not a duplicate — it is thrown away in <code class="inline">removeNonDuplicates()</code>. A bucket with two or more is exactly one raw "hit": <em>threshold</em> consecutive lines that occur more than once.</p>
+    </section>
+
+    <section id="tiling">
+      <h2><span class="num">5</span> From a minimal hit to a maximal block</h2>
+      <p>A raw hit at the window size is rarely what gets reported. If two functions share 40 duplicated lines and <code class="inline">threshold=6</code>, reporting every one of the 35 overlapping 6-line hits inside that region would be useless noise. Simian instead <strong>grows</strong> each hit one line at a time, in lock-step across every occurrence, for as long as growth is possible — a process the source calls <em>tiling</em> (<code class="inline">BlockMap.tile()</code>).</p>
+      <p>Concretely: two windows that are adjacent within the same file (window at line <em>i</em> and the very next window, at line <em>i+1</em>) are fused into one <code class="inline">SuperBlock</code> spanning both, whose hash is <code class="inline">31 * hash(first) + hash(second)</code>. That fused hash is inserted into a <em>new</em>, one-line-wider table, and the same rule applies again: it only survives if some <em>other</em> occurrence produced the identical fused hash — which can only happen if that other occurrence's underlying lines are <em>also</em> identical, one line further. This repeats, one line at a time, until a level is reached where nothing merges any further.</p>
+
+      <p>The worked example below is a real, verified run — not a hypothetical. Two files each define a method with an identical seven-line body:</p>
+
+      <pre class="code"><span class="c">// A.java and B.java — identical bodies, different class names</span>
+class A {                          class B {
+    void run() {                       void run() {
+        int total = 0;                     int total = 0;
+        for (int i = 0; i &lt; 10; i++) {     for (int i = 0; i &lt; 10; i++) {
+            total += i;                         total += i;
+        }                                   }
+        System.out.println(total);         System.out.println(total);
+        return;                             return;
+    }                                   }
+}                                   }</pre>
+
+      <figure>
+        <svg viewBox="0 0 820 330" role="img" aria-label="Diagram showing six shared significant lines between two files, four overlapping three-line windows sliding across them, and how tiling merges those windows step by step into a single maximal six-line block.">
+          <style>
+            .lbl2{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:11.5px; }
+            .cap2{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:10px; letter-spacing:.03em; }
+          </style>
+          <defs>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- six line cells, identical in both files -->
+          <!-- cell x positions -->
+          <g>
+            <text x="10" y="26" class="cap2" fill="var(--muted)">shared significant lines (A &amp; B)</text>
+          </g>
+          <!-- cells -->
+          <g font-family="-apple-system,Segoe UI,Roboto,sans-serif">
+            <!-- cell backgrounds -->
+            <!-- positions: x=40,160,280,400,520,640 width 110 -->
+          </g>
+          <!-- draw 6 cells -->
+          <!-- cell 1 -->
+          <g>
+            <rect x="20" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="77" y="57" text-anchor="middle" class="lbl2" fill="currentColor">void run()</text>
+          </g>
+          <g>
+            <rect x="145" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="202" y="57" text-anchor="middle" class="lbl2" fill="currentColor">total = 0</text>
+          </g>
+          <g>
+            <rect x="270" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="327" y="57" text-anchor="middle" class="lbl2" fill="currentColor">for (&#8230;)</text>
+          </g>
+          <g>
+            <rect x="395" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="452" y="57" text-anchor="middle" class="lbl2" fill="currentColor">total += i</text>
+          </g>
+          <g>
+            <rect x="520" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="577" y="57" text-anchor="middle" class="lbl2" fill="currentColor">println(&#8230;)</text>
+          </g>
+          <g>
+            <rect x="645" y="36" width="115" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="702" y="57" text-anchor="middle" class="lbl2" fill="currentColor">return;</text>
+          </g>
+          <text x="782" y="57" class="lbl2" fill="var(--muted)" font-style="italic">&#8230;</text>
+
+          <!-- level 3: four windows -->
+          <text x="10" y="100" class="cap2" fill="var(--muted)">size 3 &#8212; 4 overlapping windows, all duplicated</text>
+          <rect x="20"  y="106" width="240" height="14" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="145" y="124" width="240" height="14" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="270" y="142" width="240" height="14" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="395" y="160" width="240" height="14" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+
+          <!-- level 6 (final) -->
+          <text x="10" y="270" class="cap2" fill="var(--accent)" font-weight="700">size 6 &#8212; growth stops here: reported as one block</text>
+          <rect x="20" y="278" width="740" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+          <text x="390" y="298" text-anchor="middle" class="lbl2" fill="var(--accent)" font-weight="700">6 duplicate lines &#183; lines 2&#8211;8 &#183; fingerprint 163dbcf2&#8230;</text>
+
+          <!-- convergence arrows from windows to final block -->
+          <line x1="140" y1="120" x2="140" y2="276" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.1" stroke-dasharray="3 4" marker-end="url(#arrow2)"/>
+          <line x1="500" y1="174" x2="500" y2="276" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.1" stroke-dasharray="3 4" marker-end="url(#arrow2)"/>
+
+          <text x="20" y="200" class="lbl2" fill="var(--muted)" font-size="10.5">&#8595; each step: fuse two adjacent surviving windows, re-hash, keep only if it still recurs elsewhere</text>
+        </svg>
+        <figcaption><strong>Figure 2.</strong> Real output from <code class="inline">java -jar simian-4.2.2.jar -threshold=3 A.java B.java</code> (curly braces ignored by default, so the closing <code class="inline">}</code> lines contribute zero significant lines and simply don't interrupt the run). Growth stops at 6 lines because line 1 (<code class="inline">class A {</code> vs. <code class="inline">class B {</code>) never matched, and there is no ninth significant line to extend into. See §6 for why only this one, maximal block is printed instead of four separate 3-line reports.</figcaption>
+      </figure>
+    </section>
+
+    <section id="quiet">
+      <h2><span class="num">6</span> Why the output stays quiet</h2>
+      <p>A natural question about §5: tiling produces a whole ladder of intermediate levels — size 3, then 4, then 5, then 6. Does Simian print all of them? In the run behind Figure 2, it printed exactly one. The mechanism is a small piece of bookkeeping in <code class="inline">BaseBlock</code>, and it is worth naming because it is easy to get wrong by reasoning about the algorithm from the outside (an earlier draft of this report did, before checking the source): it is <strong>not</strong> the <code class="inline">-ignoreOverlappingBlocks</code> option that does this — that option is a narrower feature for a different case (§6.1).</p>
+      <p>What actually happens: the moment two adjacent size-<em>N</em> windows are fused into a size-(<em>N</em>+1) block, both parents are marked as <em>subsumed</em> (<code class="inline">setParentWhenStart</code> / <code class="inline">setParentWhenEnd</code>) — literally, "a larger match already accounts for you." When the engine later asks a bucket of size-<em>N</em> blocks whether it is worth reporting (<code class="inline">BlockCollection.isAuditable()</code>), a block that has been subsumed says no. Because the tiling step for level <em>N</em> always runs <em>before</em> level <em>N</em> is asked whether to report itself, every window that successfully grew into something bigger is silently skipped at its own size — only the windows where growth <em>actually stopped</em> (no further identical extension exists anywhere else in the scanned files) get reported, and they get reported at exactly the size where they stopped. This is what makes the final report read as one clean 6-line block instead of a ladder of four overlapping fragments.</p>
+
+      <h3>6.1 A different knob: <code class="inline">-ignoreOverlappingBlocks</code></h3>
+      <p>This option addresses a separate situation: multiple <em>reported</em> occurrences inside the same duplicate set whose line ranges overlap <em>each other</em> — for instance, a pattern that repeats twice back-to-back inside one file, so the same block is detected against itself at a shifted offset. <code class="inline">IgnoreOverlappingBlocksAuditListener</code> filters those overlapping self-matches out of a set's reported occurrences; it has no effect on the level-by-level subsumption behaviour described above, which is unconditional.</p>
+    </section>
+
+    <section id="options">
+      <h2><span class="num">7</span> Configuration options are just alternate canonicalizations</h2>
+      <p>Sections 3 and 4–6 together explain every one of Simian's ~20 command-line options with a single sentence: <strong>everything before the boundary in Figure 1 changes what the canonical line looks like; everything after it treats that canonical line exactly the same regardless of how it got that way.</strong> <code class="inline">-ignoreStrings</code>, <code class="inline">-ignoreNumbers</code>, <code class="inline">-ignoreVariableNames</code>, <code class="inline">-ignoreTypeAnnotations</code>, Go's raw-string normalisation, Python's string-prefix stripping — all of them are decorators in the same <code class="inline">TokenVisitor</code> chain from §3.2. None of them touch <code class="inline">Hasher</code>, <code class="inline">LineBuffer</code>, <code class="inline">BlockMap</code>, or the tiling logic. This is also precisely why adding a new language to Simian (as this branch did, twice) never means touching the matching engine: writing a <code class="inline">GoParser</code> and a handful of Go-specific <code class="inline">TokenVisitor</code> decorators is sufficient, because the engine downstream was never language-specific to begin with.</p>
+    </section>
+
+    <section id="scale">
+      <h2><span class="num">8</span> Complexity, and why it scales</h2>
+      <p>Let <em>L</em> be the total number of significant lines across every file scanned. Each line is hashed once (O(1) amortised per token). Each line opens and extends O(threshold) in-flight windows, so sealing all windows is O(<em>L</em> &middot; threshold). Every sealed window is inserted into a hash table once — O(1) amortised. Tiling only ever processes buckets that already contain &ge;2 blocks, so its cost is proportional to the amount of <em>actual</em> duplication found, not to <em>L</em> squared: files with no duplication cost only the initial O(<em>L</em>) hashing and insertion pass, never a pairwise comparison against every other file. This is the same shape of result that let much older Simian releases advertise scanning the entire Linux 2.4 kernel source (3.6 million lines) in under four minutes using well under a gigabyte of memory — the algorithm was never going to be the bottleneck; I/O and JVM startup are.</p>
+    </section>
+
+    <section id="limits">
+      <h2><span class="num">9</span> What this approach can't see</h2>
+      <p>The trade described in §1 has real, specific costs, and they follow directly from the mechanism:</p>
+      <ul>
+        <li><strong>Reordered statements.</strong> Two functions with the same five statements in a different order hash to entirely different windows. Nothing in the engine reasons about semantic equivalence, only literal sequence.</li>
+        <li><strong>Indentation-insensitive languages.</strong> Simian treats every physical line as an independent unit (per <code class="inline">PythonParser</code>'s own documentation); it does not track Python's INDENT/DEDENT structure. In practice this rarely matters because a real duplicate run is almost always &ge; <code class="inline">threshold</code> lines regardless, but it means a reported block can in principle straddle two adjacent functions rather than staying inside one — the same caveat that has always applied to brace-delimited languages, where a closing <code class="inline">}</code> is just another line.</li>
+        <li><strong>Statements split across lines differently.</strong> A logical statement broken across two physical lines in file A but one line in file B produces different line-hash sequences even though the parsed meaning is identical — unless the relevant <code class="inline">balanceParentheses</code> / <code class="inline">balanceSquareBrackets</code> option is enabled to re-join it first.</li>
+        <li><strong>The ternary/tuple ambiguity noted in <code class="inline">IgnoreTypeAnnotationsTokenVisitor</code>'s own documentation:</strong> a token-stream approach cannot always distinguish <code class="inline">cond ? val : [a, b]</code> (a ternary whose else-branch is an array literal) from a genuine tuple type annotation, because both look identical as a bare token sequence without a real expression parser.</li>
+      </ul>
+      <p>None of these are bugs so much as the visible edge of the core trade-off: a token-stream-and-hash engine is enormously cheaper to extend to a new language than a full parser, at the cost of a small, well-understood set of blind spots.</p>
+    </section>
+
+    <section id="related">
+      <h2><span class="num">10</span> Related techniques</h2>
+      <p>Simian's approach sits in a well-known family of line/token-shingling clone detectors, alongside tools like <strong>MOSS</strong> (winnowing: hash every <em>k</em>-gram, then keep only a sparse, position-independent subset of fingerprints to detect similarity even under reordering) and <strong>JPlag</strong> (explicit greedy-string-tiling over token sequences, searching for the longest common substring repeatedly). Simian's variant is comparatively simple and exact rather than approximate: it hashes <em>every</em> window rather than a sampled subset (no winnowing), and it extends matches by direct hash-chain adjacency rather than by an explicit longest-common-substring search — which is what keeps it fast and memory-light, at the cost of being naturally exact-match-and-append rather than approximate-match-and-align.</p>
+    </section>
+
+    <section id="conclusion">
+      <h2><span class="num">11</span> Conclusion</h2>
+      <p>Simian's matching engine is, in essence, four ideas stacked on top of each other: hash a canonical line; slide a fixed-width window of <em>threshold</em> lines across every file; group windows globally by exact hash; and greedily fuse adjacent surviving windows until growth stops, reporting only what stopped. Every one of the tool's ~20 fuzzy-matching options, and every one of its ~20 language front ends, operates entirely on the canonicalization side of that boundary and never on the matching engine itself. That separation is what let this branch add two new languages and fix four classification bugs without a single change to <code class="inline">Hasher</code>, <code class="inline">BlockMap</code>, or the tiling logic that has been running, largely unchanged, since long before either language existed as a Simian target.</p>
+    </section>
+
+    <section id="appendix">
+      <h2><span class="num">A</span> Appendix: reproducing this analysis</h2>
+      <p>The worked example in Figure 2 is exact output from the actual jar built from this repository, not a fabricated transcript:</p>
+      <pre class="code"><span class="c">$</span> ./gradlew jar
+<span class="c">$</span> java -jar build/libs/simian-4.2.2.jar -threshold=3 A.java B.java
+Found 6 duplicate lines with fingerprint 163dbcf26398da27f2f7accddade0aa5 in the following files:
+ Between lines 2 and 8 in A.java
+ Between lines 2 and 8 in B.java
+Found 12 duplicate lines in 2 blocks in 2 files
+Processed a total of 14 significant (20 raw) lines in 2 files</pre>
+      <p>where <code class="inline">A.java</code> and <code class="inline">B.java</code> are the two ten-line files shown in §5, identical except for their class names.</p>
+
+      <hr class="rule">
+      <h3>References — source locations</h3>
+      <div class="tbl-wrap refs">
+        <table>
+          <thead><tr><th>Concept</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td>Line hash / rolling hash</td><td><code>LineBuffer.java</code>, <code>Hasher.java</code></td></tr>
+            <tr><td>Sliding window construction</td><td><code>StreamLoader.java</code> (<code>BlockBuilder</code>, <code>BoundedFifoBuffer</code>)</td></tr>
+            <tr><td>Global hash-bucket table</td><td><code>BlockMap.java</code>, <code>BlockCollection.java</code></td></tr>
+            <tr><td>Greedy tiling / fusion</td><td><code>BlockMap.tile()</code>, <code>SuperBlock.java</code></td></tr>
+            <tr><td>Subsumption / quiet reporting</td><td><code>BaseBlock.isSubsumed()</code>, <code>BlockCollection.isAuditable()</code></td></tr>
+            <tr><td>Overlap filtering (a different feature)</td><td><code>IgnoreOverlappingBlocksAuditListener.java</code></td></tr>
+            <tr><td>Identifier classification</td><td><code>RecogniseIdentifiersTokenVisitor.java</code></td></tr>
+            <tr><td>Option &rarr; token-visitor wiring</td><td><code>GoParserFactory.java</code>, <code>PythonParserFactory.java</code>, <code>TypeScriptParserFactory.java</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </article>
+</div>
+
+<footer class="page-footer">
+  Simian Similarity Analyzer &middot; Apache License 2.0 &middot; simian@quandarypeak.com
+</footer>

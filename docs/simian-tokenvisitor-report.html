@@ -1,0 +1,587 @@
+<title>Inside the TokenVisitor Chain</title>
+<style>
+  :root{
+    color-scheme: light;
+    --paper:      #f3f2ee;
+    --panel:      #fbfaf7;
+    --ink:        #1b1b19;
+    --ink-2:      #4a4a46;
+    --muted:      #85837c;
+    --hair:       #ddd9d0;
+    --accent:     #3b4f9e;
+    --accent-ink: #ffffff;
+    --accent-soft:#e4e8f7;
+    --code-bg:    #eae7dd;
+    --code-ink:   #2a2a26;
+    --good:       #2f6b3a;
+    --warn:       #9a5b18;
+    --warn-soft:  #f4e6d2;
+    --shadow: 0 1px 2px rgba(20,20,15,.04), 0 6px 20px rgba(20,20,15,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --paper:      #131317;
+      --panel:      #1a1a1f;
+      --ink:        #ececea;
+      --ink-2:      #b9b8b2;
+      --muted:      #85837c;
+      --hair:       #303036;
+      --accent:     #8b9de8;
+      --accent-ink: #10121c;
+      --accent-soft:#232a45;
+      --code-bg:    #1e1f26;
+      --code-ink:   #dcdad0;
+      --good:       #7fbf8a;
+      --warn:       #e0ab5f;
+      --warn-soft:  #3a2d16;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:      #131317;
+    --panel:      #1a1a1f;
+    --ink:        #ececea;
+    --ink-2:      #b9b8b2;
+    --muted:      #85837c;
+    --hair:       #303036;
+    --accent:     #8b9de8;
+    --accent-ink: #10121c;
+    --accent-soft:#232a45;
+    --code-bg:    #1e1f26;
+    --code-ink:   #dcdad0;
+    --good:       #7fbf8a;
+    --warn:       #e0ab5f;
+    --warn-soft:  #3a2d16;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.4);
+  }
+
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    font-size:17px; line-height:1.65;
+  }
+  ::selection{ background:var(--accent-soft); }
+  code, .mono{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; }
+
+  .page{ max-width:1180px; margin:0 auto; padding:0 1.4rem; display:grid; grid-template-columns:220px minmax(0,720px); gap:3.2rem; }
+  @media (max-width:980px){ .page{ grid-template-columns:1fr; } }
+
+  .masthead{ grid-column:1 / -1; max-width:760px; margin:0 auto; padding:4.2rem 0 2.6rem; text-align:left; }
+  .kicker{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.72rem; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 1rem;
+  }
+  .masthead h1{
+    font-size:clamp(2.1rem,4.4vw,3.05rem); line-height:1.08; margin:0 0 1rem; font-weight:600;
+    text-wrap:balance;
+  }
+  .masthead .dek{ font-size:1.18rem; color:var(--ink-2); max-width:58ch; margin:0 0 1.6rem; text-wrap:balance; }
+  .byline{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    display:flex; gap:1.4rem; flex-wrap:wrap; border-top:1px solid var(--hair); padding-top:1rem;
+  }
+  .byline b{ color:var(--ink-2); font-weight:600; }
+
+  nav.toc{ position:sticky; top:2.4rem; align-self:start; padding-top:.3rem; }
+  nav.toc .label{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.7rem;
+  }
+  nav.toc ol{ list-style:none; margin:0; padding:0; counter-reset:toc; }
+  nav.toc li{ counter-increment:toc; margin-bottom:.55rem; }
+  nav.toc a{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.86rem; color:var(--ink-2);
+    text-decoration:none; display:flex; gap:.5em;
+  }
+  nav.toc a::before{
+    content: counter(toc) "."; color:var(--muted); font-variant-numeric:tabular-nums; flex:none;
+  }
+  nav.toc a:hover{ color:var(--accent); }
+  @media (max-width:980px){
+    nav.toc{ position:static; border-bottom:1px solid var(--hair); padding-bottom:1.4rem; margin-bottom:.6rem; }
+    nav.toc ol{ columns:2; }
+  }
+
+  article{ padding-bottom:5rem; min-width:0; }
+  section{ margin-top:3.2rem; scroll-margin-top:2rem; }
+  section:first-of-type{ margin-top:0; }
+  h2{
+    font-size:1.5rem; font-weight:600; margin:0 0 1.1rem; display:flex; align-items:baseline; gap:.6rem;
+    text-wrap:balance;
+  }
+  h2 .num{ font-family:ui-monospace,monospace; font-size:.95rem; color:var(--accent); font-weight:700; }
+  h3{ font-size:1.1rem; font-weight:600; margin:2rem 0 .7rem; }
+  p{ margin:0 0 1.05rem; max-width:70ch; }
+  p, li{ color:var(--ink-2); }
+  strong{ color:var(--ink); font-weight:600; }
+  a{ color:var(--accent); }
+  ul, ol.plain{ margin:0 0 1.1rem; padding-left:1.3rem; max-width:68ch; }
+  li{ margin-bottom:.4rem; }
+
+  .lede{ font-size:1.03rem; color:var(--ink); }
+
+  code.inline{
+    background:var(--code-bg); color:var(--code-ink); padding:.05rem .35rem; border-radius:4px;
+    font-size:.86em;
+  }
+
+  .note{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 8px 8px 0;
+    padding:.9rem 1.1rem; margin:1.3rem 0; font-size:.93rem;
+  }
+  .note .tag{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; font-weight:700; color:var(--accent); display:block; margin-bottom:.35rem;
+  }
+  .note p{ margin:0; color:var(--ink); max-width:none; }
+  .note code{ background:rgba(0,0,0,0.06); }
+
+  .note.warn{ border-left-color:var(--warn); background:var(--warn-soft); }
+  .note.warn .tag{ color:var(--warn); }
+
+  :root[data-theme="dark"] .note code{ background:rgba(255,255,255,0.08); }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .note code{ background:rgba(255,255,255,0.08); } }
+
+  pre.code{
+    background:var(--code-bg); color:var(--code-ink); border-radius:8px; padding:.95rem 1.1rem;
+    font-size:.82rem; line-height:1.6; overflow-x:auto; margin:1.1rem 0; box-shadow:var(--shadow);
+  }
+  pre.code .c{ color:var(--muted); }
+  pre.code .h{ color:var(--accent); font-weight:600; }
+
+  figure{ margin:1.8rem 0; padding:1.3rem 1.3rem 1rem; background:var(--panel); border:1px solid var(--hair);
+    border-radius:10px; box-shadow:var(--shadow); overflow-x:auto; }
+  figure svg{ display:block; max-width:100%; height:auto; margin:0 auto; }
+  figcaption{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.82rem; color:var(--muted);
+    margin-top:.8rem; padding-top:.7rem; border-top:1px solid var(--hair); max-width:none;
+  }
+
+  .tbl-wrap{ overflow-x:auto; margin:1.2rem 0; }
+  table{ border-collapse:collapse; width:100%; font-size:.85rem; }
+  table caption{ text-align:left; font-size:.78rem; color:var(--muted); margin-bottom:.5rem;
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }
+  th, td{ border-bottom:1px solid var(--hair); padding:.5rem .75rem; text-align:left; vertical-align:top; }
+  th{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.66rem; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); font-weight:700;
+  }
+  td{ color:var(--ink-2); font-size:.84rem; }
+  td code, th code{ font-size:.84em; }
+  tr:last-child td{ border-bottom:none; }
+  td.grp{ color:var(--accent); font-weight:700; font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; }
+
+  .refs{ font-size:.86rem; }
+  .refs li{ margin-bottom:.6rem; }
+  .refs code{ font-size:.84em; }
+
+  hr.rule{ border:none; border-top:1px solid var(--hair); margin:2.6rem 0; }
+
+  footer.page-footer{
+    grid-column:1 / -1; max-width:760px; margin:0 auto; padding:0 0 4rem; color:var(--muted);
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:.8rem; border-top:1px solid var(--hair);
+    padding-top:1.4rem;
+  }
+</style>
+
+<div class="masthead">
+  <p class="kicker">Technical report</p>
+  <h1>Inside the TokenVisitor Chain</h1>
+  <p class="dek">A close reading of Simian's decorator pipeline: the mechanism that turns a raw token stream into the canonical text the matching engine hashes, and a complete catalog of every visitor implemented today.</p>
+  <div class="byline">
+    <span><b>Subject</b> Simian Similarity Analyzer v4.2.2</span>
+    <span><b>Grounded in</b> <code class="inline">main/com/quandarypeak/simian/*TokenVisitor*.java</code></span>
+    <span><b>Companion to</b> "How Simian Catches Duplicate Code"</span>
+  </div>
+</div>
+
+<div class="page">
+  <nav class="toc">
+    <p class="label">Contents</p>
+    <ol>
+      <li><a href="#events">What a visitor sees</a></li>
+      <li><a href="#twist">Construction versus execution</a></li>
+      <li><a href="#placement">Where a new visitor belongs</a></li>
+      <li><a href="#replace">Replace, do not delete</a></li>
+      <li><a href="#classify">The one-token lookahead</a></li>
+      <li><a href="#watch">Watching it happen</a></li>
+      <li><a href="#catalog">The full catalog</a></li>
+      <li><a href="#reuse">One primitive, two purposes</a></li>
+      <li><a href="#deadcode">A visitor that is never built</a></li>
+      <li><a href="#wiring">Per-language wiring</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#appendix">Appendix: verification log</a></li>
+    </ol>
+  </nav>
+
+  <article>
+
+    <section id="events">
+      <h2><span class="num">1</span> What a visitor sees</h2>
+      <p class="lede">A <code class="inline">TokenVisitor</code> is not handed a line of text. It is handed a sequence of typed events, one call per token, and it decides what to do with each one before the next arrives. The full interface, in <code class="inline">TokenVisitor.java</code>, is nine methods:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Method</th><th>Called when</th></tr></thead>
+          <tbody>
+            <tr><td><code>visitFile()</code></td><td>once, before the first line of a file</td></tr>
+            <tr><td><code>visit(lineNumber)</code></td><td>at the start of each significant line, before its tokens</td></tr>
+            <tr><td><code>visitNumber(value)</code></td><td>a numeric literal, e.g. <code>42</code> or <code>0.08</code></td></tr>
+            <tr><td><code>visitIdentifier(name, type)</code></td><td>a bare word: a variable, type, keyword, or method name</td></tr>
+            <tr><td><code>visitString(text, type)</code></td><td>a string or character literal (<code>type</code> is the delimiter: <code>"</code> or <code>'</code>)</td></tr>
+            <tr><td><code>visitComment(text)</code></td><td>a comment, in whatever form the language uses</td></tr>
+            <tr><td><code>visitPunctuation(c)</code></td><td>a single punctuation character: <code>( ) { } [ ] ; , . :</code> and so on</td></tr>
+            <tr><td><code>visitOther(s)</code></td><td>anything the tokenizer could not classify into the above</td></tr>
+            <tr><td><code>visitEnd()</code></td><td>at the end of each significant line, after its tokens</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The <code class="inline">type</code> passed to <code class="inline">visitIdentifier</code> is one of six integer constants also declared on the interface: <code class="inline">UNKNOWN</code>, <code class="inline">METHOD</code>, <code class="inline">VARIABLE</code>, <code class="inline">CONSTANT</code>, <code class="inline">TYPE</code>, <code class="inline">KEYWORD</code>. A raw tokenizer only ever produces <code class="inline">UNKNOWN</code>; everything else is assigned later in the chain, by the one visitor whose entire job is classification (section 5).</p>
+      <p>Every concrete visitor in this codebase implements <code class="inline">TokenVisitor</code> indirectly, by extending <code class="inline">DecoratorTokenVisitor</code>, a thin base class that forwards all nine methods unchanged to a wrapped <code class="inline">TokenVisitor</code> called <code class="inline">_decorated</code>. A concrete subclass overrides only the one or two methods it actually cares about; everything else passes through for free. This is the Decorator pattern, applied uniformly, and it is what makes a "chain" out of what would otherwise be one large method full of option checks.</p>
+    </section>
+
+    <section id="twist">
+      <h2><span class="num">2</span> Construction versus execution: the twist</h2>
+      <p>Every parser factory builds its chain with the same shape of code:</p>
+      <pre class="code">TokenVisitor visitor = new DefaultTokenVisitor(listener);
+if (optionA) visitor = new VisitorA(visitor);
+if (optionB) visitor = new VisitorB(visitor);
+visitor = new RecogniseIdentifiersTokenVisitor(visitor, types, keywords);
+return new SomeLanguageParser(visitor);</pre>
+      <p>Read top to bottom, this looks like a pipeline where <code class="inline">DefaultTokenVisitor</code> runs first. It is the opposite. Each line wraps the visitor built by the line before it: <code class="inline">VisitorA</code>'s <code class="inline">_decorated</code> field is <code class="inline">DefaultTokenVisitor</code>, <code class="inline">VisitorB</code>'s is <code class="inline">VisitorA</code>, and <code class="inline">RecogniseIdentifiersTokenVisitor</code>'s is <code class="inline">VisitorB</code>. The parser is handed only the last object built, <code class="inline">RecogniseIdentifiersTokenVisitor</code>, and calls its methods directly. So the visitor built <em>last</em> in the code is the one that sees every raw token <em>first</em> at runtime, and <code class="inline">DefaultTokenVisitor</code>, built first, is the one that sees each token <em>last</em>, after everything else has had a chance to rewrite or drop it.</p>
+
+      <figure>
+        <svg viewBox="0 0 720 620" role="img" aria-label="A funnel diagram showing the runtime order of a fully configured TypeScript token visitor chain, from RecogniseIdentifiersTokenVisitor at the top, which sees each raw token first, down through nine narrower layers to DefaultTokenVisitor at the bottom, which sees each token last and emits the canonical line and its hash.">
+          <style>
+            .lbl3{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:12px; }
+            .sub3{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:9.5px; }
+          </style>
+          <defs>
+            <marker id="arrowD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <text x="360" y="20" text-anchor="middle" class="sub3" fill="var(--muted)">token enters here (from the tokenizer)</text>
+          <line x1="360" y1="26" x2="360" y2="42" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrowD)"/>
+
+          <!-- 10 layers, decreasing width, y positions -->
+          <!-- layer geometry: cx=360, widths decreasing from 600 to 220, height 40, gap 12 -->
+          <g>
+            <rect x="60"  y="46" width="600" height="38" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="80" y="70" class="lbl3" fill="currentColor">RecogniseIdentifiersTokenVisitor</text>
+            <text x="640" y="70" text-anchor="end" class="sub3" fill="var(--muted)">built last &#8211; runs 1st</text>
+          </g>
+          <g>
+            <rect x="82"  y="96" width="556" height="38" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="102" y="120" class="lbl3" fill="var(--accent)" font-weight="700">IgnoreTypeAnnotationsTokenVisitor</text>
+            <text x="616" y="120" text-anchor="end" class="sub3" fill="var(--accent)">TypeScript only &#8211; runs 2nd</text>
+          </g>
+          <g>
+            <rect x="104" y="146" width="512" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="124" y="169" class="lbl3" fill="currentColor">IgnoreLinesTokenVisitor</text>
+            <text x="596" y="169" text-anchor="end" class="sub3" fill="var(--muted)">runs 3rd, unconditional</text>
+          </g>
+          <g>
+            <rect x="124" y="194" width="472" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="144" y="217" class="lbl3" fill="currentColor">IgnoreWordsTokenVisitor (modifiers)</text>
+          </g>
+          <g>
+            <rect x="144" y="242" width="432" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="164" y="265" class="lbl3" fill="currentColor">IgnoreCurlyBracesTokenVisitor</text>
+          </g>
+          <g>
+            <rect x="164" y="290" width="392" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="184" y="313" class="lbl3" fill="currentColor">BalanceSquareBracketsTokenVisitor</text>
+          </g>
+          <g>
+            <rect x="184" y="338" width="352" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="204" y="361" class="lbl3" fill="currentColor">BalanceParenthesesTokenVisitor</text>
+          </g>
+          <g>
+            <rect x="204" y="386" width="312" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="224" y="409" class="lbl3" fill="currentColor">IgnoreVariableNamesTokenVisitor</text>
+          </g>
+          <g>
+            <rect x="224" y="434" width="272" height="36" rx="7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="244" y="457" class="lbl3" fill="currentColor">IgnoreStringsTokenVisitor</text>
+          </g>
+          <g>
+            <rect x="244" y="482" width="232" height="46" rx="8" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="360" y="502" text-anchor="middle" class="lbl3" fill="var(--accent-ink)" font-weight="700">DefaultTokenVisitor</text>
+            <text x="360" y="518" text-anchor="middle" class="sub3" fill="var(--accent-ink)">built first &#8211; runs last</text>
+          </g>
+
+          <line x1="360" y1="528" x2="360" y2="556" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrowD)"/>
+          <text x="360" y="574" text-anchor="middle" class="sub3" fill="var(--muted)">canonical line text + rolling hash, to the LineListener</text>
+        </svg>
+        <figcaption><strong>Figure 1.</strong> One representative chain (a fully optioned TypeScript file), narrowing from outermost to innermost. Each layer's <code class="inline">visitXxx</code> call either rewrites, drops, or passes through to the layer below. Read bottom to top and you have the construction order in <code class="inline">TypeScriptParserFactory.createParser()</code>; read top to bottom and you have what actually happens to a token.</figcaption>
+      </figure>
+    </section>
+
+    <section id="placement">
+      <h2><span class="num">3</span> Where a new visitor belongs</h2>
+      <p>Because construction order fixes runtime order, adding a visitor to a factory is really a decision about what information it needs to already exist when it runs. Two visitors added by the language work in this repository make the opposite choice, correctly, for opposite reasons.</p>
+
+      <h3>3.1 Needs classification: <code class="inline">IgnoreTypeAnnotationsTokenVisitor</code></h3>
+      <p><code class="inline">IgnoreTypeAnnotationsTokenVisitor</code> decides whether a <code class="inline">:</code> starts a type annotation by checking whether the identifier right after it was classified as <code class="inline">TYPE</code>. That classification does not exist until <code class="inline">RecogniseIdentifiersTokenVisitor</code> has run. So in <code class="inline">TypeScriptParserFactory</code>, it is constructed <em>before</em> <code class="inline">RecogniseIdentifiersTokenVisitor</code>, which places it just inside that layer, meaning it runs just <em>after</em> it: it always receives already-typed tokens.</p>
+
+      <h3>3.2 Needs raw text: <code class="inline">StripPythonStringPrefixTokenVisitor</code></h3>
+      <p><code class="inline">StripPythonStringPrefixTokenVisitor</code> decides whether an identifier like <code class="inline">rb</code> is a string prefix by checking its raw spelling, and whether it is immediately followed by a string token. It does not need to know how <code class="inline">RecogniseIdentifiersTokenVisitor</code> would have classified <code class="inline">rb</code>, and if it ran after classification, a stray one or two letter prefix could already have been folded into a <code class="inline">VARIABLE</code> or <code class="inline">CONSTANT</code> decision it has no use for. So in <code class="inline">PythonParserFactory</code>, it is constructed <em>after</em> <code class="inline">RecogniseIdentifiersTokenVisitor</code>, making it the true outermost layer: it sees every identifier before anything else does, prefix or not.</p>
+
+      <figure>
+        <svg viewBox="0 0 760 260" role="img" aria-label="Side by side comparison. Left, TypeScript: RecogniseIdentifiersTokenVisitor runs before IgnoreTypeAnnotationsTokenVisitor, so the annotation visitor receives already classified tokens. Right, Python: StripPythonStringPrefixTokenVisitor runs before RecogniseIdentifiersTokenVisitor, so it receives raw, unclassified tokens.">
+          <style>
+            .lbl4{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:11.5px; }
+            .cap4{ font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; font-weight:700; }
+          </style>
+          <defs>
+            <marker id="arrowE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="190" y="24" text-anchor="middle" class="cap4" fill="var(--accent)">TypeScript: needs classification</text>
+          <rect x="70" y="40" width="240" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="190" y="64" text-anchor="middle" class="lbl4" fill="var(--accent)" font-weight="700">RecogniseIdentifiers</text>
+          <line x1="190" y1="80" x2="190" y2="104" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrowE)"/>
+          <rect x="70" y="108" width="240" height="40" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="190" y="132" text-anchor="middle" class="lbl4" fill="currentColor">IgnoreTypeAnnotations</text>
+          <text x="190" y="176" text-anchor="middle" class="cap4" fill="var(--muted)" font-weight="400" letter-spacing="0">receives TYPE-tagged tokens</text>
+
+          <line x1="380" y1="40" x2="380" y2="220" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2" stroke-dasharray="4 5"/>
+
+          <text x="570" y="24" text-anchor="middle" class="cap4" fill="var(--accent)">Python: needs raw text</text>
+          <rect x="450" y="40" width="240" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="570" y="64" text-anchor="middle" class="lbl4" fill="var(--accent)" font-weight="700">StripPythonStringPrefix</text>
+          <line x1="570" y1="80" x2="570" y2="104" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrowE)"/>
+          <rect x="450" y="108" width="240" height="40" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="570" y="132" text-anchor="middle" class="lbl4" fill="currentColor">RecogniseIdentifiers</text>
+          <text x="570" y="176" text-anchor="middle" class="cap4" fill="var(--muted)" font-weight="400" letter-spacing="0">receives unclassified names</text>
+        </svg>
+        <figcaption><strong>Figure 2.</strong> Same base class, opposite placement. The rule: a visitor that reads a token's classification sits above <code class="inline">RecogniseIdentifiersTokenVisitor</code> in construction order (inside it at runtime); a visitor that only reads lexical shape can sit below it in construction order (outside it, and first, at runtime).</figcaption>
+      </figure>
+    </section>
+
+    <section id="replace">
+      <h2><span class="num">4</span> Replace, do not delete</h2>
+      <p>Most of the "ignore" visitors do not remove a token from the stream. If they did, the tokens on either side would become adjacent in the canonical line where they never were in the source, which can create or destroy a match by accident. Instead, they call <code class="inline">visitPunctuation</code> with a fixed placeholder character, so the token's <em>position</em> in the line survives even though its <em>content</em> does not.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Visitor</th><th>Replaces</th><th>With</th></tr></thead>
+          <tbody>
+            <tr><td><code>IgnoreNumbersTokenVisitor</code></td><td>a numeric literal</td><td><code>#</code></td></tr>
+            <tr><td><code>IgnoreStringsTokenVisitor</code></td><td>a double-quoted string's contents</td><td><code>"</code></td></tr>
+            <tr><td><code>IgnoreCharactersTokenVisitor</code></td><td>a character literal's contents</td><td><code>'</code></td></tr>
+            <tr><td><code>IgnoreVariableNamesTokenVisitor</code></td><td>an identifier classified <code>VARIABLE</code></td><td><code>_</code></td></tr>
+            <tr><td><code>IgnoreIdentifiersTokenVisitor</code></td><td>any identifier not classified <code>KEYWORD</code></td><td><code>_</code></td></tr>
+            <tr><td><code>IgnoreLiteralsTokenVisitor</code></td><td>a number or a string, both</td><td><code>_</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <span class="tag">A distinction that only shows up combined</span>
+        <p><code class="inline">IgnoreLiteralsTokenVisitor</code> is what runs when <code class="inline">-ignoreLiterals</code> is set, and it is used <em>instead of</em> <code class="inline">IgnoreNumbersTokenVisitor</code> and <code class="inline">IgnoreStringsTokenVisitor</code>, never alongside them (see <code class="inline">AsbtractParserFactory.java:24</code>). It maps both a number and a string to the same placeholder, <code class="inline">_</code>. Turn on <code class="inline">-ignoreNumbers</code> and <code class="inline">-ignoreStrings</code> separately instead, and a numeric literal's position still reads as <code class="inline">#</code> while a string's reads as <code class="inline">"</code>, two different placeholders. That means two lines differing only in whether a literal was a string or a number can still be told apart under the separate options, but collapse together under <code class="inline">-ignoreLiterals</code>. It is a small, verified difference in what "ignore literals" buys you compared to combining the two narrower flags.</p>
+      </div>
+    </section>
+
+    <section id="classify">
+      <h2><span class="num">5</span> Classifying identifiers: the one-token lookahead</h2>
+      <p><code class="inline">RecogniseIdentifiersTokenVisitor</code> is the one visitor every language factory constructs (almost) last, and its classification work was covered structurally in the companion report. What is worth adding here is exactly how it tells a method call from a plain variable, since it is the one decision on this list that cannot be made from the identifier's spelling alone: it needs to see one token ahead.</p>
+      <p>When <code class="inline">visitIdentifier</code> receives a name that is not a known type, not a keyword, not all-uppercase, and does not start with an uppercase letter, it does not forward the call yet. It stores the name in a single pending-name field and waits. Whatever event arrives next decides its fate:</p>
+      <ul>
+        <li>If the very next call is <code class="inline">visitPunctuation('(')</code>, the pending name is forwarded as <code class="inline">METHOD</code>: it was a call, or a declaration, immediately followed by an argument list.</li>
+        <li>If the next call is anything else, the pending name is flushed as <code class="inline">VARIABLE</code> first, and that other event is then processed normally.</li>
+      </ul>
+      <p>The flush is implemented once, in a private <code class="inline">xxx()</code> method, and called from every event handler that is not <code class="inline">visitPunctuation</code>: <code class="inline">visitNumber</code>, <code class="inline">visitString</code>, and <code class="inline">visitEnd</code> all call it before doing their own work. That last case matters: a name that is the very last token on a line (for example, a bare variable reference with nothing after it) is flushed as <code class="inline">VARIABLE</code> by <code class="inline">visitEnd()</code>, since there is no following <code class="inline">(</code> and never will be one on that line.</p>
+    </section>
+
+    <section id="watch">
+      <h2><span class="num">6</span> Watching it happen: one line, three ways</h2>
+      <p class="lede">Everything so far has been read from the source. This section is different: it is captured output from actually running the classes described above, not a description of what they should do. The method was to write a small harness in the same package (so it can reach the package-private classes directly), reconstruct the exact TypeScript chain from sections 2 and 3 by hand, insert a logging decorator at two seams, run it, and delete the harness afterward. The commands are in the appendix.</p>
+
+      <h3>6.1 From source text to raw tokens</h3>
+      <p>The line is <code class="inline">const tax: number = price * 0.08;</code>, from <code class="inline">billing.ts</code> in the companion report. Handed to <code class="inline">TypeScriptParser</code> with no decorators at all attached, an implementation of <code class="inline">TokenVisitor</code> that only logs sees exactly this, in order:</p>
+      <pre class="code">visit(1)
+  visitIdentifier("const", UNKNOWN)
+  visitIdentifier("tax", UNKNOWN)
+  visitPunctuation(':')
+  visitIdentifier("number", UNKNOWN)
+  visitPunctuation('=')
+  visitIdentifier("price", UNKNOWN)
+  visitPunctuation('*')
+  visitNumber(0.08)
+visitEnd()</pre>
+      <p>Two things worth noticing, both verified directly against <code class="inline">TypeScriptParser.parse()</code>: every identifier arrives as <code class="inline">UNKNOWN</code>, since classification has not happened yet at this stage; and the trailing <code class="inline">;</code> never appears as a token at all. <code class="inline">TypeScriptParser</code> calls <code class="inline">tokenizer.whitespaceChars(';', ';')</code> before tokenising, so a semicolon is discarded as whitespace before any <code class="inline">TokenVisitor</code>, decorator or otherwise, ever sees it. The <code class="inline">:</code>, by contrast, is ordinary punctuation and does reach the chain, which is exactly what gives <code class="inline">IgnoreTypeAnnotationsTokenVisitor</code> something to intercept in section 6.3.</p>
+
+      <h3>6.2 The same two lines, three option sets, three fingerprints</h3>
+      <p>Table 1 in section 3 claimed that <code class="inline">const tax: number = ...</code> and <code class="inline">const vat: string = ...</code> become fingerprint-identical once both <code class="inline">ignoreTypeAnnotations</code> and <code class="inline">ignoreVariableNames</code> are active. Here is that claim run for real, printing the exact canonical text <code class="inline">DefaultTokenVisitor</code> builds and the exact 64-bit value <code class="inline">LineBuffer.getLineHash()</code> returns for it:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Options</th><th>Line</th><th>Canonical text</th><th>Hash</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="2">defaults only</td><td><code>tax</code> line</td><td><code>tax:number=price*0.08</code></td><td><code>&minus;853441943700094</code></td></tr>
+            <tr><td><code>vat</code> line</td><td><code>vat:string=cost*0.08</code></td><td><code>&minus;720350292591412</code></td></tr>
+            <tr><td rowspan="2">+ ignoreTypeAnnotations</td><td><code>tax</code> line</td><td><code>tax=price*0.08</code></td><td><code>208605722995</code></td></tr>
+            <tr><td><code>vat</code> line</td><td><code>vat=cost*0.08</code></td><td><code>110553218933</code></td></tr>
+            <tr><td rowspan="2">+ ignoreVariableNames</td><td><code>tax</code> line</td><td><code>_=_*0.08</code></td><td><code>91120061</code></td></tr>
+            <tr><td><code>vat</code> line</td><td><code>_=_*0.08</code></td><td><code>91120061</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The first two option sets still produce two different 64-bit numbers, because <code class="inline">tax</code>/<code class="inline">vat</code> and, in the first row, <code class="inline">number</code>/<code class="inline">string</code> are still literally different characters feeding the same <code class="inline">31 &times; hash + tokenHash</code> accumulation. Only in the third row, once <code class="inline">IgnoreVariableNamesTokenVisitor</code> has replaced both variable names with the same placeholder, do the canonical strings become byte-for-byte identical, <code class="inline">_=_*0.08</code>, and the hash follows deterministically: same input string to <code class="inline">Hasher.hash</code>, same output. This is what "two lines fingerprint the same" means in the most literal sense available: not a similarity score, an equality of a signed 64-bit integer.</p>
+
+      <h3>6.3 Three seams in one pass</h3>
+      <p>The trace below instruments the real chain at two points: immediately as tokens leave <code class="inline">RecogniseIdentifiersTokenVisitor</code> (seam A, already classified, not yet touched by type-annotation suppression or variable-name replacement), and immediately as tokens leave <code class="inline">IgnoreVariableNamesTokenVisitor</code> (seam B, downstream of every other stage in this configuration). Both fire while processing the single line <code class="inline">const tax: number = price * 0.08;</code> under <code class="inline">ignoreTypeAnnotations</code> and <code class="inline">ignoreVariableNames</code>:</p>
+      <pre class="code">[seam A] visitIdentifier("const", KEYWORD)
+[seam A] visitIdentifier("tax", VARIABLE)
+[seam B]                                    visitPunctuation('_')
+[seam A] visitPunctuation(':')
+[seam A] visitIdentifier("number", TYPE)
+[seam A] visitPunctuation('=')
+[seam B]                                    visitPunctuation('=')
+[seam A] visitIdentifier("price", VARIABLE)
+[seam B]                                    visitPunctuation('_')
+[seam A] visitPunctuation('*')
+[seam B]                                    visitPunctuation('*')
+[seam A] visitNumber(0.08)
+[seam B]                                    visitNumber(0.08)
+
+DefaultTokenVisitor builds: _=_*0.08
+final hash:                 91120061</pre>
+      <p>Read the two columns against each other and the whole chain becomes legible in one pass. <code class="inline">const</code> reaches seam A classified <code class="inline">KEYWORD</code>, and then simply never appears at seam B at all: it is a member of the TypeScript <code class="inline">MODIFIERS</code> set, so <code class="inline">IgnoreWordsTokenVisitor</code> (running between the two seams) drops it outright. The <code class="inline">:</code> and <code class="inline">number</code> reach seam A as ordinary tokens, one of them now classified <code class="inline">TYPE</code>, and likewise never reach seam B: <code class="inline">IgnoreTypeAnnotationsTokenVisitor</code>, which also runs between the two seams, buffered the colon and swallowed the whole annotation once it saw a <code class="inline">TYPE</code>-classified identifier follow it (section 6.1 explains why the colon survives long enough to be caught here at all: it is real punctuation, not whitespace). <code class="inline">tax</code> and <code class="inline">price</code> both reach seam A classified <code class="inline">VARIABLE</code>, and at seam B they have already become <code class="inline">visitPunctuation('_')</code>, the replace-do-not-delete idiom from section 4 caught in the act. Only the arithmetic that survives every filter, <code class="inline">= * 0.08</code>, reaches both seams unchanged, and it is what <code class="inline">DefaultTokenVisitor</code> is left holding at the end of the line.</p>
+
+      <div class="note">
+        <span class="tag">What this does and does not prove</span>
+        <p>This is one line, one language, one option combination. It is not a substitute for the general rules in sections 2 through 5, which hold across every visitor and every factory; it is a single concrete instance of them, chosen because it is the same example already used illustratively in section 3's Table 1, now backed by numbers instead of assertions.</p>
+      </div>
+    </section>
+
+    <section id="catalog">
+      <h2><span class="num">7</span> The full catalog</h2>
+      <p>Every <code class="inline">TokenVisitor</code> implementation in the codebase today, grouped by role. "Toggle" names the command-line option that constructs it, where one exists; "always on" means the language factory constructs it unconditionally.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Visitor</th><th>Role</th><th>Toggle</th></tr></thead>
+          <tbody>
+            <tr><td class="grp" colspan="3">Infrastructure</td></tr>
+            <tr><td><code>DecoratorTokenVisitor</code></td><td>pass-through base class every concrete visitor extends</td><td>n/a</td></tr>
+            <tr><td><code>DefaultTokenVisitor</code></td><td>terminal stage: assembles the canonical line and its rolling hash, notifies the <code>LineListener</code></td><td>always on</td></tr>
+            <tr><td><code>RecogniseIdentifiersTokenVisitor</code></td><td>classifies bare identifiers into <code>TYPE</code>, <code>CONSTANT</code>, <code>METHOD</code>, or <code>VARIABLE</code></td><td>always on</td></tr>
+            <tr><td class="grp" colspan="3">Fuzzy matching: literals</td></tr>
+            <tr><td><code>IgnoreNumbersTokenVisitor</code></td><td>replaces numeric literals with <code>#</code></td><td><code>-ignoreNumbers</code></td></tr>
+            <tr><td><code>IgnoreStringsTokenVisitor</code></td><td>replaces string contents with <code>"</code></td><td><code>-ignoreStrings</code></td></tr>
+            <tr><td><code>IgnoreStringCaseTokenVisitor</code></td><td>lower-cases string contents</td><td><code>-ignoreStringCase</code></td></tr>
+            <tr><td><code>IgnoreCharactersTokenVisitor</code></td><td>replaces character literals with <code>'</code></td><td><code>-ignoreCharacters</code></td></tr>
+            <tr><td><code>IgnoreCharacterCaseTokenVisitor</code></td><td>lower-cases character literals</td><td><code>-ignoreCharacterCase</code></td></tr>
+            <tr><td><code>IgnoreLiteralsTokenVisitor</code></td><td>replaces both numbers and strings with <code>_</code> (used instead of the three rows above)</td><td><code>-ignoreLiterals</code></td></tr>
+            <tr><td class="grp" colspan="3">Fuzzy matching: identifiers</td></tr>
+            <tr><td><code>IgnoreIdentifierCaseTokenVisitor</code></td><td>lower-cases every identifier</td><td><code>-ignoreIdentifierCase</code></td></tr>
+            <tr><td><code>IgnoreVariableNamesTokenVisitor</code></td><td>replaces <code>VARIABLE</code>-classified names with <code>_</code></td><td><code>-ignoreVariableNames</code></td></tr>
+            <tr><td><code>IgnoreSubtypeNamesTokenVisitor</code></td><td>trims a <code>TYPE</code> name down to its last capitalised segment (<code>BufferedReader</code> &#8594; <code>Reader</code>)</td><td><code>-ignoreSubtypeNames</code></td></tr>
+            <tr><td><code>IgnoreIdentifiersTokenVisitor</code></td><td>replaces every non-<code>KEYWORD</code> identifier with <code>_</code> (used instead of the three rows above)</td><td><code>-ignoreIdentifiers</code></td></tr>
+            <tr><td><code>IgnoreTypeAnnotationsTokenVisitor</code></td><td>suppresses a <code>:</code> and the type expression that follows it, including generics and tuples</td><td><code>-ignoreTypeAnnotations</code> (TypeScript)</td></tr>
+            <tr><td class="grp" colspan="3">Fuzzy matching: structure</td></tr>
+            <tr><td><code>IgnoreCurlyBracesTokenVisitor</code></td><td>drops <code>{</code> and <code>}</code> entirely</td><td><code>-ignoreCurlyBraces</code></td></tr>
+            <tr><td><code>IgnoreWordsTokenVisitor</code></td><td>drops any identifier in a supplied word set (one class, reused with a different set per language: modifiers, in every factory)</td><td><code>-ignoreModifiers</code></td></tr>
+            <tr><td><code>IgnoreLinesTokenVisitor</code></td><td>suppresses an entire line if any trigger word appears on it (imports, packages, and similarly by C# for <code>#region</code>/<code>#endregion</code>)</td><td>always on, per language</td></tr>
+            <tr><td><code>IgnoreBlocksTokenVisitor</code></td><td>suppresses everything between a configured start and end marker, comment-delimited, with nesting support</td><td><code>-ignoreBlocks=START:END</code></td></tr>
+            <tr><td class="grp" colspan="3">Line balancing</td></tr>
+            <tr><td><code>BalanceBracketsTokenVisitor</code></td><td>shared base: suppresses the line-boundary events while a configured bracket pair is unbalanced, so a split expression reads as one logical line</td><td>n/a</td></tr>
+            <tr><td><code>BalanceParenthesesTokenVisitor</code></td><td><code>BalanceBracketsTokenVisitor</code> for <code>( )</code></td><td><code>-balanceParentheses</code></td></tr>
+            <tr><td><code>BalanceSquareBracketsTokenVisitor</code></td><td><code>BalanceBracketsTokenVisitor</code> for <code>[ ]</code></td><td><code>-balanceSquareBrackets</code></td></tr>
+            <tr><td><code>BalanceCurlyBracesTokenVisitor</code></td><td><code>BalanceBracketsTokenVisitor</code> for <code>{ }</code></td><td><code>-balanceCurlyBraces</code> (documented; see section 8)</td></tr>
+            <tr><td class="grp" colspan="3">Language-specific</td></tr>
+            <tr><td><code>StripPythonStringPrefixTokenVisitor</code></td><td>drops a Python string-prefix identifier (<code>f</code>, <code>b</code>, <code>r</code>, <code>rb</code>&#8230;) when it is immediately followed by a string</td><td>Python, always on</td></tr>
+            <tr><td><code>RecogniseRubyBlockCommentKeywordsTokenVisitor</code></td><td>reclassifies <code>=begin</code> / <code>=end</code> as <code>KEYWORD</code>, and splits any other <code>=</code>-joined identifier apart</td><td>Ruby, always on</td></tr>
+            <tr><td><code>RecogniseIbmLanguageStringsTokenVisitor</code></td><td>recognises System/360 Assembler self-defining terms and literals that a generic tokenizer sees as opaque "other" tokens</td><td>IBM Assembler, always on</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="reuse">
+      <h2><span class="num">8</span> One primitive, two purposes</h2>
+      <p><code class="inline">IgnoreLinesTokenVisitor</code> is the plainest visitor in the catalog: it watches for a trigger word, and if one appears anywhere on a line, the whole line is dropped when <code class="inline">visitEnd()</code> would otherwise fire. Every C-family factory constructs it unconditionally, with a small, fixed per-language word set: <code class="inline">import</code> and <code class="inline">package</code> for Java and Go, just <code class="inline">import</code> for TypeScript, <code class="inline">require</code> and <code class="inline">require_gem</code> for Ruby.</p>
+      <p><code class="inline">CSharpParserFactory</code> reuses that exact mechanism for a second, unrelated purpose. Its default trigger set adds the literal strings <code class="inline">#region</code> and <code class="inline">#endregion</code>, so a region marker line is unconditionally dropped the same way an <code class="inline">import</code> line is. When <code class="inline">-ignoreRegions</code> or <code class="inline">-ignoreBlocks</code> is explicitly set, C# switches those two words back out of the trigger set and instead wraps the <code class="inline">LineListener</code> itself in an <code class="inline">IgnoreBlocksLineListener</code>, a different, adjacent mechanism (it is a <code class="inline">LineListener</code> decorator, not a <code class="inline">TokenVisitor</code>) that suppresses every line strictly between a start and end marker rather than only the marker lines themselves. The plain word-trigger version and the range-aware version answer two different questions, "does this line mention <code class="inline">#region</code>" versus "am I currently inside one", and C# needs the cheap one by default and the precise one on request.</p>
+    </section>
+
+    <section id="deadcode">
+      <h2><span class="num">9</span> A visitor that is never built</h2>
+      <div class="note warn">
+        <span class="tag">Verified, not assumed</span>
+        <p><code class="inline">BalanceCurlyBracesTokenVisitor</code> exists as a class, and <code class="inline">Option.BALANCE_CURLY_BRACES</code> exists as a settable option (reachable from the Ant task API in <code class="inline">SimianCheck.java</code>), and the README documents <code class="inline">balanceCurlyBraces</code> as a Ruby-only feature. But a repository-wide search for its constructor, <code class="inline">new BalanceCurlyBracesTokenVisitor(</code>, returns zero matches under <code class="inline">main/</code>. No parser factory, including <code class="inline">RubyParserFactory</code>, ever builds one. Setting <code class="inline">-balanceCurlyBraces+</code> today parses without error and silently does nothing, because the option value is never read by anything that constructs a visitor chain.</p>
+      </div>
+      <p>This is worth stating plainly rather than glossing over, because it is exactly the kind of gap that is invisible from the README and only visible from the wiring code: a class can be complete, tested in isolation, and still be unreachable from any command line invocation. <code class="inline">BalanceParenthesesTokenVisitor</code> and <code class="inline">BalanceSquareBracketsTokenVisitor</code>, its siblings under the same <code class="inline">BalanceBracketsTokenVisitor</code> base, are both wired in (sections 6 and 9); only the curly-brace variant is not.</p>
+    </section>
+
+    <section id="wiring">
+      <h2><span class="num">10</span> Per-language wiring, side by side</h2>
+      <p>Every factory shares two building blocks, <code class="inline">AsbtractParserFactory.createBaseLanguageTokenVisitor(listener, options)</code> for the option-driven core, and <code class="inline">AbstractCFamilyParserFactory</code>'s overload of the same name for the C-family layer on top of it (square brackets, curly braces, modifiers, line triggers). What differs per language is the word sets passed in, and what gets added outside that shared shell.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Language</th><th>Added outside the shared shell</th><th>Constructed</th></tr></thead>
+          <tbody>
+            <tr><td>Java</td><td>n/a</td><td><code>RecogniseIdentifiers</code></td></tr>
+            <tr><td>Go</td><td>n/a</td><td><code>RecogniseIdentifiers</code></td></tr>
+            <tr><td>TypeScript</td><td>tuple/generic-aware type suppression</td><td><code>IgnoreTypeAnnotations</code> &#8594; <code>RecogniseIdentifiers</code></td></tr>
+            <tr><td>Python</td><td>string-prefix stripping, wrapped around everything</td><td><code>RecogniseIdentifiers</code> &#8594; <code>StripPythonStringPrefix</code></td></tr>
+            <tr><td>Ruby</td><td>block-comment keyword recognition, plus a <code>LineListener</code>-level wrapper for <code>=begin</code>/<code>=end</code></td><td><code>RecogniseIdentifiers</code> &#8594; <code>RecogniseRubyBlockCommentKeywords</code></td></tr>
+            <tr><td>C#</td><td>region markers folded into the line-trigger word set, or into a <code>LineListener</code> wrapper on request</td><td><code>RecogniseIdentifiers</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The "constructed" column reads left to right in construction order, which by section 2's rule means right to left in execution order. Python is the outlier worth re-reading against Figure 2: it is the one language where a visitor is added strictly outside <code class="inline">RecogniseIdentifiersTokenVisitor</code>, because prefix-stripping is a lexical concern, not a classification-dependent one.</p>
+    </section>
+
+    <section id="conclusion">
+      <h2><span class="num">11</span> Conclusion</h2>
+      <p>The chain is small in its parts and large in its combinations. Every concrete class does one narrow thing: drop a token, replace it with a fixed placeholder, lower-case it, buffer it for one step, or gate a whole line or block on a running state machine. None of them know about hashing, windows, or tiling; that is the matching engine's job, described in the companion report. What this report adds is the piece that only shows up once you read the factories side by side: placement in the chain is not cosmetic. It is a direct, checkable claim about what information a visitor needs already computed, and getting it backward either breaks the feature outright or, as with <code class="inline">-balanceCurlyBraces</code>, leaves an option that parses cleanly and does nothing at all.</p>
+    </section>
+
+    <section id="appendix">
+      <h2><span class="num">A</span> Appendix: verification log</h2>
+      <p>Every claim in this report that depends on wiring, not just on one file's contents, was checked directly rather than inferred:</p>
+      <pre class="code"><span class="c">$</span> grep -rn "new BalanceCurlyBracesTokenVisitor" main/
+<span class="c">(no output: confirms section 9)</span>
+
+<span class="c">$</span> grep -n "createParser" main/com/quandarypeak/simian/*ParserFactory.java
+<span class="c">(read to confirm the construction order in Table, section 10)</span></pre>
+      <p>Section 6's traces were produced by a small harness, <code class="inline">TraceHarness.java</code>, written directly into <code class="inline">main/com/quandarypeak/simian/</code> so it could reach the package-private classes, then compiled against the already-built classes and removed once the output below was captured:</p>
+      <pre class="code"><span class="c">$</span> ./gradlew jar
+<span class="c">$</span> javac -cp build/classes/java/main -d /tmp/simian-trace-out \
+    main/com/quandarypeak/simian/TraceHarness.java
+<span class="c">$</span> java -cp "build/classes/java/main:/tmp/simian-trace-out" \
+    com.quandarypeak.simian.TraceHarness
+<span class="c">(the exact output printed in section 6.1 through 6.3)</span>
+
+<span class="c">$</span> rm main/com/quandarypeak/simian/TraceHarness.java
+      <hr class="rule">
+      <h3>References: source locations</h3>
+      <div class="tbl-wrap refs">
+        <table>
+          <thead><tr><th>Concept</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td>The interface and its classification constants</td><td><code>TokenVisitor.java</code></td></tr>
+            <tr><td>The decorator base class</td><td><code>DecoratorTokenVisitor.java</code></td></tr>
+            <tr><td>Shared chain assembly</td><td><code>AsbtractParserFactory.java</code>, <code>AbstractCFamilyParserFactory.java</code></td></tr>
+            <tr><td>Per-language wiring examples</td><td><code>JavaParserFactory.java</code>, <code>GoParserFactory.java</code>, <code>TypeScriptParserFactory.java</code>, <code>PythonParserFactory.java</code>, <code>RubyParserFactory.java</code>, <code>CSharpParserFactory.java</code></td></tr>
+            <tr><td>Identifier classification and the lookahead buffer</td><td><code>RecogniseIdentifiersTokenVisitor.java</code></td></tr>
+            <tr><td>Type-annotation suppression</td><td><code>IgnoreTypeAnnotationsTokenVisitor.java</code></td></tr>
+            <tr><td>Python prefix stripping</td><td><code>StripPythonStringPrefixTokenVisitor.java</code></td></tr>
+            <tr><td>Bracket balancing base and the unwired sibling</td><td><code>BalanceBracketsTokenVisitor.java</code>, <code>BalanceCurlyBracesTokenVisitor.java</code></td></tr>
+            <tr><td>Block-marker state machine</td><td><code>BlockMarkerState.java</code>, used by both <code>IgnoreBlocksTokenVisitor</code> and <code>IgnoreBlocksLineListener</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </article>
+</div>
+
+<footer class="page-footer">
+  Simian Similarity Analyzer &middot; Apache License 2.0 &middot; simian@quandarypeak.com
+</footer>
