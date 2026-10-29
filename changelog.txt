@@ -17,6 +17,7 @@ Version 4.2.2 - June 16th, 2026
 * Fixed: TypeScript await keyword no longer incorrectly treated as a modifier by ignoreModifiers
 * Fixed: TypeScript/JavaScript contextual keywords (get, set, from, of, is, as, declare, namespace, module, abstract, override, readonly, out, satisfies) used as ordinary method, property, or parameter names (e.g. cache.get(key), function set(obj, path)) are no longer misclassified as keyword declarations
 * Fixed: get/set and other contextual keywords used as object-literal property keys or function parameter names (e.g. { get: load }, function f(get, set)) are no longer incorrectly stripped by ignoreModifiers
+* Added 35 new regression tests across the Go, JavaScript, and TypeScript test suites covering the fixes above
 * Updated README to document Go language options and TypeScript improvements
 * Enhanced Python support: triple-quoted strings normalised before tokenisation to prevent line-sync errors
 * Enhanced Python support: string literal prefixes (f, b, r, u, rb, fr, etc.) stripped from fingerprints
