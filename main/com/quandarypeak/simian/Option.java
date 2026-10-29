@@ -69,6 +69,8 @@ public final class Option implements Comparable<Option> {
 
     public static final Option IGNORE_VARIABLE_NAMES = new Option("ignoreVariableNames", "[+|-]", "Completely ignores variable names (fields, parameters and locals)");
 
+    public static final Option IGNORE_TYPE_ANNOTATIONS = new Option("ignoreTypeAnnotations", "[+|-]", "Ignores TypeScript type annotations (: Type) in fingerprints");
+
     public static final Option IGNORE_IDENTIFIERS = new Option("ignoreIdentifiers", "[+|-]", "Completely ignores identifiers");
 
     public static final Option IGNORE_BLOCKS = new Option("ignoreBlocks", PARAMETER_SEP + "START:END", "Ignores all lines between START/END", true);

@@ -1,0 +1,567 @@
+/*
+ * Copyright 2022-2026 Quandary Peak Research, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.quandarypeak.simian;
+
+import org.junit.Test;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
+/**
+ * Tests for JavaScriptParserFactory: fingerprint quality and option behaviours.
+ *
+ * <p><b>Parser internals:</b> JavaScript uses JavaScriptParser (the same C-family
+ * StreamTokenizer as Java/C#/C++) with a pre-processing step via
+ * JavaScriptTemplateLiteralNormalisingReader. Single-line (//) and block (/* *&#47;) comments
+ * are stripped; semicolons are whitespace; '#' and '$' are word characters; '.' and '/' are
+ * ordinary punctuation.
+ *
+ * <p><b>Unlike TypeScriptParserFactory, JavaScriptParserFactory does not wire
+ * {@link RecogniseIdentifiersTokenVisitor} into its chain.</b> Every identifier keeps the
+ * default {@code TokenVisitor.UNKNOWN} type from the tokenizer - nothing is ever classified
+ * TYPE, KEYWORD, VARIABLE, METHOD, or CONSTANT. This is a real, pre-existing gap (shared by
+ * CppParserFactory/CSharpParserFactory/RubyParserFactory) with concrete consequences for
+ * three options, documented and pinned by tests in section 9 below rather than silently
+ * left unverified.
+ */
+public class JavaScriptParserTest {
+
+    // -------------------------------------------------------------------------
+    // Test infrastructure
+    // -------------------------------------------------------------------------
+
+    static class CapturingLineListener implements LineListener {
+        final List<String> lines = new ArrayList<>();
+
+        @Override
+        public void file() {
+            lines.clear();
+        }
+
+        @Override
+        public void line(final int lineNumber, final LineBuffer line) {
+            lines.add(line.toString());
+        }
+    }
+
+    static class ParseResult {
+        final int rawLineCount;
+        final List<String> fingerprints;
+
+        ParseResult(final int rawLineCount, final List<String> fingerprints) {
+            this.rawLineCount = rawLineCount;
+            this.fingerprints = Collections.unmodifiableList(fingerprints);
+        }
+
+        String get(final int i) { return fingerprints.get(i); }
+        int count() { return fingerprints.size(); }
+    }
+
+    /** All options cleared - only the parser's unconditional behaviours apply. */
+    private static Options bare() {
+        final Options opts = new Options();
+        opts.clear();
+        return opts;
+    }
+
+    private static ParseResult parse(final String code, final Options opts) throws IOException {
+        final CapturingLineListener listener = new CapturingLineListener();
+        final Parser parser = new JavaScriptParserFactory().createParser(listener, opts);
+        final int rawLines = parser.parse(new StringReader(code));
+        return new ParseResult(rawLines, listener.lines);
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. Comment stripping
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void singleLineCommentProducesNoFingerprint() throws IOException {
+        final ParseResult r = parse("// a comment\n", bare());
+        assertEquals(1, r.rawLineCount);
+        assertEquals(0, r.count());
+    }
+
+    @Test
+    public void blockCommentProducesNoFingerprint() throws IOException {
+        final ParseResult r = parse("/* block comment */\n", bare());
+        assertEquals(1, r.rawLineCount);
+        assertEquals(0, r.count());
+    }
+
+    @Test
+    public void inlineCommentIsStrippedFromFingerprint() throws IOException {
+        final ParseResult rWith    = parse("x = 5 // assign x\n", bare());
+        final ParseResult rWithout = parse("x = 5\n", bare());
+        assertEquals(1, rWith.count());
+        assertEquals(rWithout.get(0), rWith.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Import and package suppression
+    //    IgnoreLinesTokenVisitor is always active (unconditional, not option-gated).
+    //    Unlike TypeScriptParserFactory (which omits 'package' - see its IMPORT_LINE_TRIGGERS
+    //    comment), JavaScriptParserFactory's IGNORE_LINE_TRIGGERS includes both 'import' and
+    //    'package'.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void importLineIsSuppressed() throws IOException {
+        final ParseResult r = parse("import { Component } from 'react';\n", bare());
+        assertEquals(0, r.count());
+    }
+
+    @Test
+    public void packageLineIsSuppressed() throws IOException {
+        final ParseResult r = parse("package com.example;\n", bare());
+        assertEquals(0, r.count());
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Semicolons treated as whitespace
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void semicolonDoesNotAppearInFingerprint() throws IOException {
+        final ParseResult rSemi   = parse("x = 5;\n", bare());
+        final ParseResult rNoSemi = parse("x = 5\n", bare());
+        assertEquals(rNoSemi.get(0), rSemi.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Template literals
+    //    JavaScriptTemplateLiteralNormalisingReader converts backtick template literals to
+    //    double-quoted strings before the StreamTokenizer runs. This is the behaviour fixed
+    //    this session when JavaScriptParserFactory switched from CFamilyParser to
+    //    JavaScriptParser - these tests confirm it actually applies to .js, not just .ts.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void templateLiteralProducesSameFingerprintAsRegularString() throws IOException {
+        final ParseResult rTemplate = parse("const msg = `hello world`;\n", bare());
+        final ParseResult rString   = parse("const msg = \"hello world\";\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralInterpolatedVariablesDoNotAppearInFingerprint() throws IOException {
+        final ParseResult rFirst = parse("return `Hello, ${firstName}`;\n", bare());
+        final ParseResult rLast  = parse("return `Hello, ${lastName}`;\n", bare());
+        assertEquals(rFirst.get(0), rLast.get(0));
+    }
+
+    @Test
+    public void ignoreStringsNormalisesTemplateLiterals() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_STRINGS, Boolean.TRUE);
+        final ParseResult rStr      = parse("const msg = \"hello\";\n", opts);
+        final ParseResult rTemplate = parse("const msg = `world`;\n", opts);
+        assertEquals(rStr.get(0), rTemplate.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. IGNORE_MODIFIERS
+    //    Strips words in the MODIFIERS set: class, const, export, extends, function,
+    //    static, var, let. IgnoreWordsTokenVisitor matches by raw identifier name, not by
+    //    classified type, so this works correctly even without RecogniseIdentifiersTokenVisitor.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void ignoreModifiersStripsClassKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rWith    = parse("class Foo {\n", opts);
+        final ParseResult rWithout = parse("Foo {\n", bare());
+        assertEquals(rWithout.get(0), rWith.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsExtendsKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rExtends = parse("class Foo extends Base {\n", opts);
+        final ParseResult rPlain   = parse("class Foo Base {\n", opts);
+        assertEquals(rPlain.get(0), rExtends.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsExportKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rExport = parse("export const PI = 3;\n", opts);
+        final ParseResult rPlain  = parse("PI = 3;\n", bare());
+        assertEquals(rPlain.get(0), rExport.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsFunctionKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rFunction = parse("function fetch() {\n", opts);
+        final ParseResult rPlain    = parse("fetch() {\n", bare());
+        assertEquals(rPlain.get(0), rFunction.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsStaticKeyword() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rStatic = parse("static count() {\n", opts);
+        final ParseResult rPlain  = parse("count() {\n", opts);
+        assertEquals(rPlain.get(0), rStatic.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersNormalisesConstAndLetAndVar() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rConst = parse("const x = 5;\n", opts);
+        final ParseResult rLet   = parse("let x = 5;\n", opts);
+        final ParseResult rVar   = parse("var x = 5;\n", opts);
+        assertEquals(rConst.get(0), rLet.get(0));
+        assertEquals(rConst.get(0), rVar.get(0));
+    }
+
+    @Test
+    public void ignoreModifiersStripsGetSetAccessorKeywords() throws IOException {
+        // 'get'/'set' are plain JavaScript (ES5) accessor keywords, not TypeScript-specific -
+        // an accessor and a plain method of the same name must fingerprint identically.
+        // ('out', TypeScript's generic variance annotation, is intentionally NOT added here:
+        // JS has no generics, so 'out' has no syntactic role and could be a real parameter
+        // name - e.g. 'function process(out) {}' - that must not be stripped.)
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("get celsius() {\n", opts);
+        final ParseResult rSetter = parse("set celsius(v) {\n", opts);
+        final ParseResult rPlain  = parse("celsius() {\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+        assertNotEquals(rPlain.get(0), rSetter.get(0)); // setter still has the 'v' parameter
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. BALANCE_PARENTHESES
+    //    Reacts to punctuation, not identifier classification - works the same for JS as TS.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void balanceParenthesesMergesMultiLineCallIntoOneLine() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.BALANCE_PARENTHESES, Boolean.TRUE);
+        final String multiLine = "foo(\n    a,\n    b\n);\n";
+        final ParseResult rWith    = parse(multiLine, opts);
+        final ParseResult rWithout = parse(multiLine, bare());
+        assertNotEquals(rWithout.get(0), rWith.get(0));
+        assertEquals(1, rWith.count());
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. BALANCE_SQUARE_BRACKETS
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void balanceSquareBracketsMergesMultiLineArrayLiteral() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.BALANCE_SQUARE_BRACKETS, Boolean.TRUE);
+        final String multiLine = "const arr = [\n    1,\n    2,\n    3\n];\n";
+        final ParseResult rWith    = parse(multiLine, opts);
+        final ParseResult rWithout = parse(multiLine, bare());
+        assertNotEquals(rWithout.get(0), rWith.get(0));
+        assertEquals(1, rWith.count());
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. IGNORE_CURLY_BRACES
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void ignoreCurlyBracesRemovesBracesFromFingerprint() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_CURLY_BRACES, Boolean.TRUE);
+        final ParseResult rBraces   = parse("if (x) { y(); }\n", opts);
+        final ParseResult rNoBraces = parse("if (x) y();\n", bare());
+        assertEquals(rNoBraces.get(0), rBraces.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. Known gap: options that depend on identifier classification are no-ops or
+    //    over-erase for JavaScript, because JavaScriptParserFactory never wires
+    //    RecogniseIdentifiersTokenVisitor - every identifier keeps type UNKNOWN.
+    //    These tests pin down and document the CURRENT behaviour; they are not an
+    //    endorsement of it. If RecogniseIdentifiersTokenVisitor is ever wired in for JS,
+    //    these specific tests should start failing, which is the intended signal to
+    //    update them.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void ignoreVariableNamesHasNoEffectOnJavaScript() throws IOException {
+        // IgnoreVariableNamesTokenVisitor only replaces type == VARIABLE. Since nothing is
+        // ever classified VARIABLE for JS, two different variable names remain different -
+        // the option has no effect.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_VARIABLE_NAMES, Boolean.TRUE);
+        final ParseResult rA = parse("x + y\n", opts);
+        final ParseResult rB = parse("alpha + beta\n", opts);
+        assertNotEquals(rA.get(0), rB.get(0));
+    }
+
+    @Test
+    public void ignoreSubtypeNamesHasNoEffectOnJavaScript() throws IOException {
+        // IgnoreSubtypeNamesTokenVisitor only reduces type == TYPE. Since nothing is ever
+        // classified TYPE for JS, a compound PascalCase name is left untouched instead of
+        // being reduced to its last capitalised segment.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_SUBTYPE_NAMES, Boolean.TRUE);
+        final ParseResult r = parse("new StringBuilder()\n", opts);
+        assertTrue(r.get(0).contains("StringBuilder"));
+    }
+
+    @Test
+    public void ignoreIdentifiersErasesRealKeywordsToo() throws IOException {
+        // IgnoreIdentifiersTokenVisitor only preserves type == KEYWORD. Since nothing is
+        // ever classified KEYWORD for JS (unlike TypeScriptParserFactory, which wires
+        // RecogniseIdentifiersTokenVisitor), IGNORE_IDENTIFIERS erases EVERY identifier for
+        // JS - including real language keywords like 'if' and 'return' - not just
+        // user-defined names. Contrast with TypeScriptParserTest's
+        // ignoreIdentifiersPreservesControlFlowKeywords, where 'if'/'while' do survive.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_IDENTIFIERS, Boolean.TRUE);
+        final ParseResult rIf    = parse("if (x) {\n", opts);
+        final ParseResult rWhile = parse("while (x) {\n", opts);
+        assertEquals(rIf.get(0), rWhile.get(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. Escape sequences
+    //     Regular "..."/'...' strings are unescaped directly by StreamTokenizer: \\ -> one
+    //     backslash, \n -> a real newline, \" -> a literal quote, etc.
+    //     Template literals go through JavaScriptTemplateLiteralNormalisingReader first,
+    //     which converts backticks to a synthetic double-quoted string; escape sequences in
+    //     the static text are passed through verbatim so StreamTokenizer resolves them
+    //     exactly once, giving template literals the same escape semantics as regular strings.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void regularStringBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        final ParseResult rOne = parse("const a = \"\\\\\";\n", bare());
+        final ParseResult rTwo = parse("const a = \"\\\\\\\\\";\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void regularStringTwoCharNewlineEscapeBecomesRealNewline() throws IOException {
+        // The two-char sequence \n (backslash + letter n) is unescaped to an actual newline
+        // character embedded in the string value - distinct from literal text containing 'n'.
+        final ParseResult rEscaped = parse("const a = \"line1\\nline2\";\n", bare());
+        final ParseResult rLiteral = parse("const a = \"line1nline2\";\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+    }
+
+    @Test
+    public void templateLiteralBackslashEscapesProduceCorrectLiteralCounts() throws IOException {
+        // Regression test for two bugs this fix addresses: one escaped-backslash pair
+        // previously corrupted the synthetic string boundary (silently swallowing the rest
+        // of the line), and two pairs were miscounted as one due to double-unescaping.
+        final ParseResult rOne = parse("const a = `\\\\`;\n", bare());
+        final ParseResult rTwo = parse("const a = `\\\\\\\\`;\n", bare());
+        assertNotEquals(rOne.get(0), rTwo.get(0));
+        assertEquals(parse("const a = \"\\\\\";\n", bare()).get(0), rOne.get(0));
+        assertEquals(parse("const a = \"\\\\\\\\\";\n", bare()).get(0), rTwo.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBackslashDoesNotSwallowRestOfLine() throws IOException {
+        // Direct regression test for the silent-corruption bug: previously, everything after
+        // the template literal on the same line vanished into a corrupted string value.
+        final ParseResult r = parse("const a = `\\\\`; const b = 1;\n", bare());
+        assertTrue(r.get(0).contains("const b"));
+        assertTrue(r.get(0).contains("1.0"));
+    }
+
+    @Test
+    public void templateLiteralWithPrefixTextEndingInEscapedBackslashDoesNotSwallowRestOfLine() throws IOException {
+        // Same scenario as templateLiteralEscapedBackslashDoesNotSwallowRestOfLine, with
+        // realistic prefix content (Windows-path style) before the trailing escaped pair.
+        // Asserting on "1.0" (not just "foo(bar)") matters: if the line were swallowed into a
+        // corrupted string value, "const b" and "1" would still appear as literal text inside
+        // it - only a genuinely separate, correctly-tokenized NUMBER renders as "1.0".
+        final ParseResult r = parse("const p = `C:\\\\`; const b = 1;\n", bare());
+        assertTrue(r.get(0).contains("const b"));
+        assertTrue(r.get(0).contains("1.0"));
+    }
+
+    @Test
+    public void templateLiteralEscapedBackslashDoesNotSwallowRestOfLineUnderIgnoreStrings() throws IOException {
+        // The swallow-prevention must hold even when IGNORE_STRINGS is also suppressing string
+        // content - normalisation happens at the Reader level, before any token visitor
+        // (including IgnoreStringsTokenVisitor) ever runs, so the two must be independent.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_STRINGS, Boolean.TRUE);
+        final ParseResult rFoo = parse("const p = `C:\\\\`; foo(bar);\n", opts);
+        final ParseResult rBaz = parse("const p = `C:\\\\`; baz(qux);\n", opts);
+        assertNotEquals(rFoo.get(0), rBaz.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBacktickBeforeTrailingContentDoesNotTerminateEarly() throws IOException {
+        // A single backslash immediately before a backtick genuinely escapes it in real JS/TS
+        // (unlike Go raw strings, where backslash has no escape meaning at all) - the literal
+        // backtick becomes part of the string's content, and the string correctly terminates
+        // only at the real closing backtick that follows. Comparing against a control where the
+        // escaped backtick is replaced by a literal space catches content-corruption bugs (e.g.
+        // collapsing the escape to a space) that "foo(bar) survives" alone would miss, since
+        // both would otherwise terminate at the same place.
+        final ParseResult rBacktick = parse("const p = `C:\\`end`; foo(bar);\n", bare());
+        final ParseResult rSpace    = parse("const p = `C: end`; foo(bar);\n", bare());
+        assertTrue(rBacktick.get(0).contains("foo(bar)"));
+        assertNotEquals(rSpace.get(0), rBacktick.get(0));
+    }
+
+    @Test
+    public void templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText() throws IOException {
+        // Regression test for the false-duplicate bug: the two-char \n escape (meant to
+        // represent a runtime newline) previously collapsed to just the letter 'n', making it
+        // indistinguishable from unrelated literal text containing that same letter.
+        final ParseResult rEscaped = parse("const a = `line1\\nline2`;\n", bare());
+        final ParseResult rLiteral = parse("const a = `line1nline2`;\n", bare());
+        assertNotEquals(rEscaped.get(0), rLiteral.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedBacktickAndQuoteDoNotTerminateEarly() throws IOException {
+        final ParseResult rBacktick = parse("const a = `it\\`s`; const b = 1;\n", bare());
+        final ParseResult rQuote    = parse("const a = `say \\\"hi\\\"`; const b = 1;\n", bare());
+        assertTrue(rBacktick.get(0).contains("const b"));
+        assertTrue(rQuote.get(0).contains("const b"));
+    }
+
+    @Test
+    public void escapedForwardSlashResolvesTheSameInRegularStringsAndTemplateLiterals() throws IOException {
+        final ParseResult rString   = parse("const a = \"a\\/b\";\n", bare());
+        final ParseResult rTemplate = parse("const a = `a\\/b`;\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralWithEscapedBackslashMatchesEquivalentString() throws IOException {
+        // Same equivalence as templateLiteralBackslashEscapesProduceCorrectLiteralCounts, with
+        // prefix content and a trailing call after the literal rather than a bare declaration.
+        final ParseResult rString   = parse("const p = \"C:\\\\\"; foo(bar);\n", bare());
+        final ParseResult rTemplate = parse("const p = `C:\\\\`; foo(bar);\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapeSequencesMatchEquivalentString() throws IOException {
+        // String-vs-template equivalence for the two-char \n escape specifically - distinct
+        // from templateLiteralTwoCharNewlineEscapeDoesNotCollideWithLiteralText (which only
+        // checks internal template-literal consistency) and from
+        // escapedForwardSlashResolvesTheSameInRegularStringsAndTemplateLiterals (which only
+        // covers \/, not \n).
+        final ParseResult rString   = parse("x = \"a\\nb\"\n", bare());
+        final ParseResult rTemplate = parse("x = `a\\nb`\n", bare());
+        assertEquals(rString.get(0), rTemplate.get(0));
+    }
+
+    @Test
+    public void templateLiteralEscapedSlashDoesNotSwallowRestOfLine() throws IOException {
+        final ParseResult r = parse("const a = `a\\/b`; const c = 1;\n", bare());
+        assertTrue(r.get(0).contains("const c"));
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. Contextual keyword vs ordinary identifier disambiguation (get/set)
+    //     RecogniseAccessorKeywordTokenVisitor: 'get'/'set' are genuine accessor-prefix
+    //     keywords only when not immediately preceded by '.' and immediately followed by
+    //     another identifier (not '(' directly). Otherwise they're ordinary identifiers.
+    //     JS has no identifier classification step, so this only affects IGNORE_MODIFIERS
+    //     here (bare rendering is always unaffected; IGNORE_IDENTIFIERS already erases
+    //     everything uniformly regardless, per the documented gap in section 9).
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void methodNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("class Foo { get() { return 1; } }\n", opts);
+        final ParseResult rSet = parse("class Foo { set(v) { this.v = v; } }\n", opts);
+        assertTrue(rGet.get(0).contains("get"));
+        assertTrue(rSet.get(0).contains("set"));
+    }
+
+    @Test
+    public void callSiteGetSetAreNotStrippedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("cache.get(key);\n", opts);
+        final ParseResult rSet = parse("cache.set(key, val);\n", opts);
+        assertTrue(rGet.get(0).contains("get"));
+        assertTrue(rSet.get(0).contains("set"));
+    }
+
+    @Test
+    public void genuineAccessorDeclarationStillCorrectlyStrippedByIgnoreModifiers() throws IOException {
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGetter = parse("class Foo { get fahrenheit() { return 1; } }\n", opts);
+        final ParseResult rPlain  = parse("class Foo { fahrenheit() { return 1; } }\n", opts);
+        assertEquals(rPlain.get(0), rGetter.get(0));
+    }
+
+    @Test
+    public void objectKeyNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        // Regression test: 'get'/'set' as an object-literal property key (followed by ':',
+        // not '(' and not another identifier) must not be treated as a genuine accessor
+        // declaration - it's an ordinary key like any other.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult rGet = parse("const api = { get: load }\n", opts);
+        final ParseResult rSet = parse("const api = { set: load }\n", opts);
+        assertNotEquals(rGet.get(0), rSet.get(0));
+    }
+
+    @Test
+    public void parameterNamedGetOrSetIsNotDestroyedByIgnoreModifiers() throws IOException {
+        // 'get'/'set' as a function parameter name (followed by ',' or ')', not '(' and not
+        // another identifier) must likewise not be treated as a genuine accessor declaration.
+        final Options opts = bare();
+        opts.setOption(Option.IGNORE_MODIFIERS, Boolean.TRUE);
+        final ParseResult r = parse("function f(get, set) {}\n", opts);
+        assertTrue(r.get(0).contains("get"));
+        assertTrue(r.get(0).contains("set"));
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. Sample file
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void sampleFileParsesSuccessfully() throws Exception {
+        final LineListener lineListener = new TestLineListener();
+        final Parser parser = new JavaScriptParserFactory().createParser(lineListener, new Options());
+        final int ret = parser.parse(new FileReader(new File("test/data/javascript/test.js")));
+        assertEquals(73, ret);
+    }
+}
