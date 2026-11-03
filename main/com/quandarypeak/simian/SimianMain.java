@@ -98,7 +98,7 @@ public class SimianMain {
         exit(checker.check());
     }
 
-    private void processArg(final String arg) {
+    void processArg(final String arg) {
         Objects.requireNonNull(arg);
 
         if (arg.startsWith("-")) {
@@ -106,6 +106,10 @@ public class SimianMain {
         } else {
             processImplicitIncludes(arg);
         }
+    }
+
+    Options getOptions() {
+        return options;
     }
 
     private void processOption(final String arg) {
@@ -125,7 +129,9 @@ public class SimianMain {
             processConfig(arg.substring(CONFIG.getName().length()));
         } else if (arg.startsWith(Option.IGNORE_BLOCKS.getName())) {
             processIgnoreBlocks(arg.substring(Option.IGNORE_BLOCKS.getName().length()));
-        } else if (arg.startsWith("balance") || arg.startsWith("ignore") || arg.startsWith("report") || arg.startsWith(Option.FAIL_ON_DUPLICATION.getName())) {
+        } else if (arg.startsWith(Option.FAIL_ON_DUPLICATION.getName())) {
+            processFailOnDuplication(arg.substring(Option.FAIL_ON_DUPLICATION.getName().length()));
+        } else if (arg.startsWith("balance") || arg.startsWith("ignore") || arg.startsWith("report")) {
             processBoolean(arg);
         } else {
             usage("Invalid option : '" + arg + "'");
@@ -164,6 +170,36 @@ public class SimianMain {
         }
 
         options.setOption(Option.valueOf(arg), enable);
+    }
+
+    private void processFailOnDuplication(final String arg) {
+        if (arg.startsWith(Option.PARAMETER_SEP)) {
+            processFailOnDuplicationPercentage(arg.substring(1));
+        } else {
+            processBoolean(Option.FAIL_ON_DUPLICATION.getName() + arg);
+        }
+    }
+
+    private void processFailOnDuplicationPercentage(final String arg) {
+        final String trimmed = arg.trim();
+
+        if (!trimmed.endsWith("%")) {
+            usage("Invalid failOnDuplication percentage : '" + arg + "'");
+        }
+
+        int percentage = 0;
+
+        try {
+            percentage = Integer.parseInt(trimmed.substring(0, trimmed.length() - 1));
+        } catch (final NumberFormatException e) {
+            usage("Invalid failOnDuplication percentage : '" + arg + "'");
+        }
+
+        if (percentage < 0 || percentage > 100) {
+            usage("failOnDuplication percentage must be between 0 and 100");
+        }
+
+        options.setOption(Option.FAIL_ON_DUPLICATION, percentage);
     }
 
     private void processConfig(final String arg) {
